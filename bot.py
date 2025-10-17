@@ -6,14 +6,14 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('🎉 Привет! Я работаю из облака Railway! Исправленная версия!')
+    await update.message.reply_text('🎉 Привет! Я работаю из облака Railway! Версия 20.8!')
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('Я простой тестовый бот. Пока умею только отвечать на /start и /help')
 
 if __name__ == '__main__':
     try:
-        # Создаем приложение НОВЫМ способом (для версии 20.x)
+        # Создаем приложение
         application = Application.builder().token(BOT_TOKEN).build()
         
         # Добавляем обработчики команд
