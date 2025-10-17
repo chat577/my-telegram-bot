@@ -15,8 +15,8 @@ BOT_TOKEN = os.getenv('BOT_TOKEN')
 # Создаем основную клавиатуру
 def get_main_keyboard():
     keyboard = [
-        [KeyboardButton("/start"), KeyboardButton("/info")],
-        [KeyboardButton("/help"), KeyboardButton("/back")]
+       [KeyboardButton("🎯 Старт"), KeyboardButton("📚 Инфо")],
+        [KeyboardButton("💡 Помощь"), KeyboardButton("⬅️ Назад")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, input_field_placeholder="Выберите команду...")
 
@@ -108,3 +108,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
