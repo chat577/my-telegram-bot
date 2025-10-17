@@ -108,15 +108,12 @@ def get_back_keyboard():
 
 # Функции для получения данных
 def get_daily_fact():
-    # Используем только русские факты
     return random.choice(RUSSIAN_FACTS)
 
 def get_daily_joke():
-    # Используем только русские шутки
     return random.choice(RUSSIAN_JOKES)
 
 def get_daily_advice():
-    # Используем только русские советы
     return random.choice(RUSSIAN_ADVICES)
 
 def get_daily_quote():
@@ -124,7 +121,6 @@ def get_daily_quote():
         response = requests.get(API_URLS["quote"])
         if response.status_code == 200:
             data = response.json()
-            # Переводим автора на русский (упрощенный вариант)
             author_translations = {
                 "Albert Einstein": "Альберт Эйнштейн",
                 "Mahatma Gandhi": "Махатма Ганди", 
@@ -142,7 +138,6 @@ def get_daily_quote():
     except:
         pass
     
-    # Fallback цитаты на русском
     quotes = [
         "📜 Успех — это идти от неудачи к неудаче, не теряя энтузиазма. — Уинстон Черчилль",
         "📜 Лучший способ начать делать — перестать говорить и начать делать. — Уолт Дисней",
@@ -166,7 +161,6 @@ def get_daily_idea():
     return random.choice(ideas)
 
 def get_daily_horoscope(sign):
-    # Генерируем "уникальный" гороскоп на основе даты и знака
     today = datetime.now().strftime("%d%m")
     seed = hash(sign + today) % 100
     
@@ -209,10 +203,8 @@ def get_movie_quote():
     return random.choice(quotes)
 
 def calculate_birth_number(day, month, year):
-    # Простая нумерология - складываем все цифры даты
     total = sum(int(d) for d in str(day)) + sum(int(d) for d in str(month)) + sum(int(d) for d in str(year))
     
-    # Сводим к одной цифре
     while total > 9:
         total = sum(int(d) for d in str(total))
     
@@ -247,7 +239,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = get_back_keyboard()
     
-    # Проверяем, откуда пришел запрос - из сообщения или callback
     if update.message:
         await update.message.reply_text(
             '📞 **Доступные функции:**\n\n'
@@ -260,7 +251,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=keyboard
         )
     else:
-        # Если пришло из callback (нажатие кнопки)
         query = update.callback_query
         await query.answer()
         await query.edit_message_text(
@@ -336,9 +326,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='Markdown'
         )
     
-        elif data == "help_cmd":
+    elif data == "help_cmd":
         await help_command(update, context)
-        return  # Добавляем return чтобы не продолжалось выполнение
+        return
     
     elif data.startswith("zodiac_"):
         sign = data.replace("zodiac_", "")
@@ -405,7 +395,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     try:
-        # Поддерживаем разные форматы дат
         if '.' in text:
             day, month, year = map(int, text.split('.'))
         elif '-' in text:
@@ -417,14 +406,14 @@ async def handle_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if 1 <= day <= 31 and 1 <= month <= 12 and 1900 <= year <= 2023:
             number, meaning = calculate_birth_number(day, month, year)
-            keyboard = get_back_keyboard()  # ДОБАВЛЕНО: кнопка возврата
+            keyboard = get_back_keyboard()
             await update.message.reply_text(
                 f'🔢 **Результат нумерологии:**\n\n'
                 f'📅 Дата рождения: {text}\n'
                 f'✨ Число судьбы: **{number}**\n\n'
                 f'📖 **Характеристика:** {meaning}\n\n'
                 f'💫 Это число отражает ваши врожденные таланты и потенциал!',
-                reply_markup=keyboard,  # ДОБАВЛЕНО: клавиатура
+                reply_markup=keyboard,
                 parse_mode='Markdown'
             )
         else:
@@ -442,7 +431,6 @@ async def handle_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.lower()
     
-    # Проверяем формат даты рождения
     if any(c.isdigit() for c in text) and ('.' in text or '-' in text or '/' in text):
         await handle_birthdate(update, context)
         return
@@ -484,15 +472,13 @@ def main():
     try:
         application = Application.builder().token(BOT_TOKEN).build()
         
-        # Команды
         application.add_handler(CommandHandler("start", start_command))
         application.add_handler(CommandHandler("help", help_command))
         
-        # Обработчики
         application.add_handler(CallbackQueryHandler(button_handler))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
         
-        print("✅ Бот с исправлениями запускается...")
+        print("✅ Бот запускается...")
         application.run_polling()
         
     except Exception as e:
@@ -500,4 +486,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
