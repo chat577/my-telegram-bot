@@ -1,7 +1,6 @@
 import os
 import logging
 import random
-import requests
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
 
@@ -19,7 +18,10 @@ FACTS = [
     "🌍 Земля - единственная планета, не названная в честь бога",
     "🍯 Мед никогда не портится - археологи находили съедобный мед возрастом 3000 лет",
     "🐧 Пингвины могут прыгать до 2 метров в высоту",
-    "📚 В Японии более 50 видов пончиков с вкусом пиццы"
+    "📚 В Японии более 50 видов пончиков с вкусом пиццы",
+    "⚡ Молния может ударить в одно место несколько раз",
+    "🐌 Улитки могут спать до 3 лет",
+    "🎵 Коровы мычат с разными акцентами в разных регионах"
 ]
 
 JOKES = [
@@ -27,6 +29,8 @@ JOKES = [
     "Разговор двух серверов: - Ты почему такой медленный? - Да RAM'а не хватает...",
     "Почему Python не нужна одежда? Потому что у него есть классы!",
     "Какой кофе пьют программисты? Java!",
+    "Оптимист верит, что мы живем в лучшем из миров. Пессимист боится, что так и есть.",
+    "Почему математики не любят природу? Слишком много переменных!"
 ]
 
 IDEAS = [
@@ -34,7 +38,21 @@ IDEAS = [
     "🚀 Разработай бота для изучения английского языка",
     "🎨 Сделай генератор мемов на основе текущих новостей",
     "📊 Создай дашборд для отслеживания привычек",
-    "🤖 Напиши AI-помощника для планирования дня"
+    "🤖 Напиши AI-помощника для планирования дня",
+    "🌐 Сделай сервис для создания резюме",
+    "📱 Разработай мобильное приложение для медитации",
+    "🎮 Создай простую браузерную игру"
+]
+
+ADVICES = [
+    "🌟 Начни с малого - большие цели достигаются маленькими шагами",
+    "💪 Сегодня лучше, чем вчера - это уже прогресс!",
+    "🎯 Сфокусируйся на одном деле и доведи его до конца",
+    "📚 Учись каждый день чему-то новому",
+    "🚀 Не бойся ошибок - они ведут к росту",
+    "⏰ Планируй свой день с вечера",
+    "🎪 Баланс работы и отдыха - ключ к продуктивности",
+    "🤝 Окружай себя людьми, которые вдохновляют"
 ]
 
 # Клавиатуры
@@ -53,6 +71,7 @@ def get_generator_keyboard():
         [InlineKeyboardButton("😂 Случайная шутка", callback_data="gen_joke")],
         [InlineKeyboardButton("💡 Идея для проекта", callback_data="gen_idea")],
         [InlineKeyboardButton("🎯 Случайное число", callback_data="gen_number")],
+        [InlineKeyboardButton("🌟 Случайный совет", callback_data="gen_advice")],
         [InlineKeyboardButton("🔙 Назад", callback_data="back_cmd")]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -77,14 +96,13 @@ def generate_number():
     return f"🎲 Ваше случайное число: **{random.randint(1, 100)}**"
 
 def generate_advice():
-    advices = [
-        "🌟 Начни с малого - большие цели достигаются маленькими шагами",
-        "💪 Сегодня лучше, чем вчера - это уже прогресс!",
-        "🎯 Сфокусируйся на одном деле и доведи его до конца",
-        "📚 Учись каждый день чему-то новому",
-        "🚀 Не бойся ошибок - они ведут к росту"
-    ]
-    return random.choice(advices)
+    return random.choice(ADVICES)
+
+def generate_password():
+    length = random.randint(8, 12)
+    chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
+    password = ''.join(random.choice(chars) for _ in range(length))
+    return f"🔐 Сгенерированный пароль: `{password}`"
 
 # Команды бота
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -100,7 +118,7 @@ async def info_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         '🤖 **Информация о боте:**\n\n'
         '• Создан на Python\n• Хостится на Railway\n• Умеет генерировать:\n'
-        '  🎲 Случайные факты\n  😂 Шутки\n  💡 Идеи для проектов\n  🎯 Числа\n  🌟 Советы\n\n'
+        '  🎲 Случайные факты\n  😂 Шутки\n  💡 Идеи для проектов\n  🎯 Числа\n  🌟 Советы\n  🔐 Пароли\n\n'
         '✅ Все генераторы работают бесплатно!',
         reply_markup=keyboard
     )
@@ -115,6 +133,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         '/idea - идея для проекта\n'
         '/number - случайное число\n'
         '/advice - случайный совет\n'
+        '/password - сгенерировать пароль\n'
         '/help - эта справка\n\n'
         'Или используйте кнопки меню ↓',
         reply_markup=keyboard
@@ -136,6 +155,9 @@ async def number_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def advice_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(generate_advice())
 
+async def password_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(generate_password(), parse_mode='Markdown')
+
 # Обработка inline-кнопок
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -155,7 +177,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             '🤖 **Информация о боте:**\n\n'
             '• Создан на Python\n• Хостится на Railway\n• Умеет генерировать:\n'
-            '  🎲 Случайные факты\n  😂 Шутки\n  💡 Идеи для проектов\n  🎯 Числа\n  🌟 Советы\n\n'
+            '  🎲 Случайные факты\n  😂 Шутки\n  💡 Идеи для проектов\n  🎯 Числа\n  🌟 Советы\n  🔐 Пароли\n\n'
             '✅ Все генераторы работают бесплатно!',
             reply_markup=keyboard
         )
@@ -178,6 +200,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             '/idea - идея для проекта\n'
             '/number - случайное число\n'
             '/advice - случайный совет\n'
+            '/password - сгенерировать пароль\n'
             '/help - эта справка\n\n'
             'Или используйте кнопки меню ↓',
             reply_markup=keyboard
@@ -216,6 +239,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='Markdown'
         )
     
+    elif data == "gen_advice":
+        keyboard = get_generator_keyboard()
+        await query.edit_message_text(
+            f'{generate_advice()}\n\n'
+            'Хотите еще что-то сгенерировать?',
+            reply_markup=keyboard
+        )
+    
     elif data == "back_cmd":
         keyboard = get_main_inline_keyboard()
         await query.edit_message_text(
@@ -237,6 +268,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(generate_number(), parse_mode='Markdown')
     elif any(word in text for word in ['совет', 'advice']):
         await update.message.reply_text(generate_advice())
+    elif any(word in text for word in ['пароль', 'password']):
+        await update.message.reply_text(generate_password(), parse_mode='Markdown')
     else:
         keyboard = get_main_inline_keyboard()
         await update.message.reply_text(
@@ -257,6 +290,7 @@ def main():
         application.add_handler(CommandHandler("idea", idea_command))
         application.add_handler(CommandHandler("number", number_command))
         application.add_handler(CommandHandler("advice", advice_command))
+        application.add_handler(CommandHandler("password", password_command))
         
         # Обработчики
         application.add_handler(CallbackQueryHandler(button_handler))
