@@ -306,7 +306,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     elif data == "movie_cmd":
         quote = get_movie_quote()
-        keyboard = get_back_keyboard()
+        keyboard = get_quote_keyboard()
         await query.edit_message_text(
             f'🎬 {quote}\n\n'
             'Хотите еще цитату из фильма?',
@@ -486,3 +486,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
