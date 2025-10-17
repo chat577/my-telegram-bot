@@ -12,87 +12,76 @@ logging.basicConfig(
 # Будем брать токен из настроек Railway
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 
-# Создаем клавиатуру с кнопками
+# Создаем основную клавиатуру
 def get_main_keyboard():
     keyboard = [
-        [KeyboardButton("🚀 Старт"), KeyboardButton("ℹ️ Информация")],
-        [KeyboardButton("📞 Помощь"), KeyboardButton("🔙 Назад")]
+        [KeyboardButton("/start"), KeyboardButton("/info")],
+        [KeyboardButton("/help"), KeyboardButton("/back")]
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, input_field_placeholder="Выберите команду...")
 
 # Команда /start
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = get_main_keyboard()
     await update.message.reply_text(
-        '🎉 Добро пожаловать! Выберите действие:',
+        '🎉 Добро пожаловать! Выберите команду из меню ниже:',
+        reply_markup=keyboard
+    )
+
+# Команда /info
+async def info_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = get_main_keyboard()
+    await update.message.reply_text(
+        '🤖 **Информация о боте:**\n\n'
+        '• Создан на Python\n'
+        '• Хостится на Railway\n'
+        '• Использует python-telegram-bot\n'
+        '• Имеет кнопочное меню\n\n'
+        'Это демо-версия бота с кнопками!',
         reply_markup=keyboard
     )
 
 # Команда /help
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = get_main_keyboard()
     await update.message.reply_text(
-        '📞 Помощь:\n'
-        '• Нажмите "Старт" для начала работы\n'
-        '• "Информация" - о боте\n'
-        '• "Помощь" - это сообщение\n'
-        '• "Назад" - вернуться в главное меню',
-        reply_markup=get_main_keyboard()
+        '📞 **Помощь по командам:**\n\n'
+        '/start - Начало работы\n'
+        '/info - Информация о боте\n'
+        '/help - Эта справка\n'
+        '/back - Вернуться в главное меню\n\n'
+        'Или используйте кнопки ниже ↓',
+        reply_markup=keyboard
     )
 
-# Обработка нажатий на кнопки
-async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Команда /back
+async def back_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = get_main_keyboard()
+    await update.message.reply_text(
+        '🔙 Возвращаемся в главное меню:',
+        reply_markup=keyboard
+    )
+
+# Обработка обычных текстовых сообщений
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     
-    if text == "🚀 Старт":
-        await update.message.reply_text(
-            '🚀 Бот запущен и готов к работе!\n'
-            'Это ваше первое меню с кнопками.\n'
-            'Выберите следующий шаг:',
-            reply_markup=get_main_keyboard()
-        )
-    
-    elif text == "ℹ️ Информация":
-        await update.message.reply_text(
-            '🤖 **Информация о боте:**\n'
-            '• Создан на Python\n'
-            '• Хостится на Railway\n'
-            '• Использует python-telegram-bot\n'
-            '• Имеет кнопочное меню\n\n'
-            'Это демо-версия бота с кнопками!',
-            reply_markup=get_main_keyboard()
-        )
-    
-    elif text == "📞 Помощь":
+    # Если пользователь нажал на текстовую кнопку (без слеша)
+    if text == "Старт" or text == "start":
+        await start_command(update, context)
+    elif text == "Информация" or text == "info":
+        await info_command(update, context)
+    elif text == "Помощь" or text == "help":
         await help_command(update, context)
-    
-    elif text == "🔙 Назад":
-        await update.message.reply_text(
-            '🔙 Возвращаемся в главное меню:',
-            reply_markup=get_main_keyboard()
-        )
-    
+    elif text == "Назад" or text == "back":
+        await back_command(update, context)
     else:
-        # Если получен неизвестный текст
+        # Для любого другого текста показываем меню
+        keyboard = get_main_keyboard()
         await update.message.reply_text(
-            'Я не понимаю эту команду. Используйте кнопки меню:',
-            reply_markup=get_main_keyboard()
-        )
-
-# Обработка обычных текстовых сообщений (если пользователь пишет текст вместо кнопок)
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.lower()
-    
-    if text in ['привет', 'hello', 'hi']:
-        await update.message.reply_text(
-            'Привет! Используйте кнопки для навигации:',
-            reply_markup=get_main_keyboard()
-        )
-    elif text in ['спасибо', 'благодарю']:
-        await update.message.reply_text('Пожалуйста! 😊')
-    else:
-        await update.message.reply_text(
-            'Используйте кнопки меню для взаимодействия:',
-            reply_markup=get_main_keyboard()
+            'Используйте кнопки меню или команды:\n'
+            '/start, /info, /help, /back',
+            reply_markup=keyboard
         )
 
 def main():
@@ -102,13 +91,12 @@ def main():
         
         # Добавляем обработчики команд
         application.add_handler(CommandHandler("start", start_command))
+        application.add_handler(CommandHandler("info", info_command))
         application.add_handler(CommandHandler("help", help_command))
+        application.add_handler(CommandHandler("back", back_command))
         
-        # Обработчик кнопок
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_buttons))
-        
-        # Обработчик обычных сообщений (опционально)
-        application.add_handler(MessageHandler(filters.TEXT & filters.COMMAND, handle_message))
+        # Обработчик всех текстовых сообщений
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
         
         print("✅ Бот с кнопками запускается...")
         
