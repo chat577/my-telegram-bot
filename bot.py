@@ -1,7 +1,7 @@
 import os
 import logging
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 # Настройка логирования
 logging.basicConfig(
@@ -12,29 +12,25 @@ logging.basicConfig(
 # Будем брать токен из настроек Railway
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 
-def start_command(update: Update, context: CallbackContext):
-    update.message.reply_text('🎉 Привет! Я работаю из облака Railway! Старая версия кода!')
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text('🎉 Привет! Я работаю из облака Railway! Современная версия!')
 
-def help_command(update: Update, context: CallbackContext):
-    update.message.reply_text('Я простой тестовый бот. Пока умею только отвечать на /start и /help')
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text('Я простой тестовый бот. Пока умею только отвечать на /start и /help')
 
 def main():
     try:
-        # Создаем Updater (старый способ)
-        updater = Updater(BOT_TOKEN, use_context=True)
-        
-        # Получаем диспетчер для регистрации обработчиков
-        dispatcher = updater.dispatcher
+        # Создаем Application (современный способ)
+        application = Application.builder().token(BOT_TOKEN).build()
         
         # Добавляем обработчики команд
-        dispatcher.add_handler(CommandHandler("start", start_command))
-        dispatcher.add_handler(CommandHandler("help", help_command))
+        application.add_handler(CommandHandler("start", start_command))
+        application.add_handler(CommandHandler("help", help_command))
         
         print("✅ Бот запускается...")
         
         # Запускаем бота
-        updater.start_polling()
-        updater.idle()
+        application.run_polling()
         
     except Exception as e:
         print(f"❌ Ошибка: {e}")
