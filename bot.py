@@ -55,9 +55,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         '📞 **Помощь по командам:**\n\n'
         '/start - Начало работы\n'
-        '/info - Информация о боте\n'
-        '/help - Эта справка\n\n'
-        'Или используйте кнопки под сообщениями ↓',
+        '/info - Информация о боте\n',
         reply_markup=keyboard
     )
 
@@ -144,3 +142,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
