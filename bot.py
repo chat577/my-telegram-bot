@@ -6,19 +6,24 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('🎉 Привет! Я работаю из облака Railway!')
+    await update.message.reply_text('🎉 Привет! Я работаю из облака Railway! Исправленная версия!')
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('Я простой тестовый бот. Пока умею только отвечать на /start')
+    await update.message.reply_text('Я простой тестовый бот. Пока умею только отвечать на /start и /help')
 
 if __name__ == '__main__':
-    # Создаем бота
-    app = Application.builder().token(BOT_TOKEN).build()
-    
-    # Добавляем команды
-    app.add_handler(CommandHandler('start', start_command))
-    app.add_handler(CommandHandler('help', help_command))
-    
-    # Запускаем бота
-    print("✅ Бот запущен и работает!")
-    app.run_polling()
+    try:
+        # Создаем приложение НОВЫМ способом (для версии 20.x)
+        application = Application.builder().token(BOT_TOKEN).build()
+        
+        # Добавляем обработчики команд
+        application.add_handler(CommandHandler("start", start_command))
+        application.add_handler(CommandHandler("help", help_command))
+        
+        print("✅ Бот запускается...")
+        
+        # Запускаем бота
+        application.run_polling()
+        
+    except Exception as e:
+        print(f"❌ Ошибка: {e}")
