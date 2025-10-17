@@ -75,9 +75,44 @@ def get_generator_keyboard():
     ]
     return InlineKeyboardMarkup(keyboard)
 
+def get_fact_keyboard():
+    keyboard = [
+        [InlineKeyboardButton("🎲 Еще факт", callback_data="gen_fact")],
+        [InlineKeyboardButton("🔙 В меню", callback_data="back_cmd")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def get_joke_keyboard():
+    keyboard = [
+        [InlineKeyboardButton("😂 Еще шутку", callback_data="gen_joke")],
+        [InlineKeyboardButton("🔙 В меню", callback_data="back_cmd")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def get_idea_keyboard():
+    keyboard = [
+        [InlineKeyboardButton("💡 Еще идею", callback_data="gen_idea")],
+        [InlineKeyboardButton("🔙 В меню", callback_data="back_cmd")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def get_advice_keyboard():
+    keyboard = [
+        [InlineKeyboardButton("🌟 Еще совет", callback_data="gen_advice")],
+        [InlineKeyboardButton("🔙 В меню", callback_data="back_cmd")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
 def get_quote_keyboard():
     keyboard = [
         [InlineKeyboardButton("📜 Еще цитату", callback_data="gen_quote")],
+        [InlineKeyboardButton("🔙 В меню", callback_data="back_cmd")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def get_movie_keyboard():
+    keyboard = [
+        [InlineKeyboardButton("🎬 Еще цитату из фильма", callback_data="movie_cmd")],
         [InlineKeyboardButton("🔙 В меню", callback_data="back_cmd")]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -306,7 +341,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     elif data == "movie_cmd":
         quote = get_movie_quote()
-        keyboard = get_quote_keyboard()
+        keyboard = get_movie_keyboard()
         await query.edit_message_text(
             f'🎬 {quote}\n\n'
             'Хотите еще цитату из фильма?',
@@ -341,37 +376,37 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     elif data == "gen_fact":
         fact = get_daily_fact()
-        keyboard = get_generator_keyboard()
+        keyboard = get_fact_keyboard()
         await query.edit_message_text(
             f'{fact}\n\n'
-            'Хотите еще что-то сгенерировать?',
+            'Хотите еще один факт?',
             reply_markup=keyboard
         )
     
     elif data == "gen_joke":
         joke = get_daily_joke()
-        keyboard = get_generator_keyboard()
+        keyboard = get_joke_keyboard()
         await query.edit_message_text(
             f'{joke}\n\n'
-            'Хотите еще что-то сгенерировать?',
+            'Хотите еще одну шутку?',
             reply_markup=keyboard
         )
     
     elif data == "gen_idea":
         idea = get_daily_idea()
-        keyboard = get_generator_keyboard()
+        keyboard = get_idea_keyboard()
         await query.edit_message_text(
             f'{idea}\n\n'
-            'Хотите еще что-то сгенерировать?',
+            'Хотите еще одну идею?',
             reply_markup=keyboard
         )
     
     elif data == "gen_advice":
         advice = get_daily_advice()
-        keyboard = get_generator_keyboard()
+        keyboard = get_advice_keyboard()
         await query.edit_message_text(
             f'{advice}\n\n'
-            'Хотите еще что-то сгенерировать?',
+            'Хотите еще один совет?',
             reply_markup=keyboard
         )
     
@@ -486,4 +521,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
