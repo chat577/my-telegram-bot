@@ -148,98 +148,7 @@ def get_back_keyboard():
         [InlineKeyboardButton("🔙 Назад в меню", callback_data="back_cmd")]
     ]
     return InlineKeyboardMarkup(keyboard)
-def get_favorites_management_keyboard():
-    keyboard = [
-        [InlineKeyboardButton("📋 Посмотреть избранное", callback_data="view_favorites")],
-        [InlineKeyboardButton("🗑️ Удалить избранное", callback_data="delete_favorites")],
-        [InlineKeyboardButton("🔙 Назад", callback_data="back_cmd")]
-    ]
-    return InlineKeyboardMarkup(keyboard)
 
-def get_favorites_list_keyboard(favorites, page=0, items_per_page=5):
-    keyboard = []
-    
-    # Показываем избранное для текущей страницы
-    start_idx = page * items_per_page
-    end_idx = start_idx + items_per_page
-    current_favorites = favorites[start_idx:end_idx]
-    
-    for i, (fav_id, content_type, content, timestamp) in enumerate(current_favorites):
-        # Обрезаем длинный текст для кнопки
-        short_content = content[:30] + "..." if len(content) > 30 else content
-        emoji = {
-            'fact': '🎲', 'joke': '😂', 'quote': '📜', 
-            'advice': '🌟', 'idea': '💡', 'movie': '🎬'
-        }.get(content_type, '⭐')
-        
-        keyboard.append([InlineKeyboardButton(
-            f"{emoji} {short_content}", 
-            callback_data=f"view_fav_{fav_id}"
-        )])
-    
-    # Кнопки навигации
-    nav_buttons = []
-    if page > 0:
-        nav_buttons.append(InlineKeyboardButton("⬅️ Назад", callback_data=f"fav_page_{page-1}"))
-    
-    if end_idx < len(favorites):
-        nav_buttons.append(InlineKeyboardButton("Вперед ➡️", callback_data=f"fav_page_{page+1}"))
-    
-    if nav_buttons:
-        keyboard.append(nav_buttons)
-    
-    keyboard.append([InlineKeyboardButton("🔙 К управлению", callback_data="manage_favorites")])
-    
-    return InlineKeyboardMarkup(keyboard)
-
-def get_favorite_item_keyboard(fav_id, content_type, content):
-    keyboard = [
-        [InlineKeyboardButton("🗑️ Удалить эту запись", callback_data=f"delete_fav_{fav_id}")],
-        [InlineKeyboardButton("📋 К списку избранного", callback_data="view_favorites")],
-        [InlineKeyboardButton("🔙 К управлению", callback_data="manage_favorites")]
-    ]
-    return InlineKeyboardMarkup(keyboard)
-
-def get_delete_favorites_keyboard(favorites, page=0, items_per_page=5):
-    keyboard = []
-    
-    start_idx = page * items_per_page
-    end_idx = start_idx + items_per_page
-    current_favorites = favorites[start_idx:end_idx]
-    
-    for i, (fav_id, content_type, content, timestamp) in enumerate(current_favorites):
-        short_content = content[:30] + "..." if len(content) > 30 else content
-        emoji = {
-            'fact': '🎲', 'joke': '😂', 'quote': '📜', 
-            'advice': '🌟', 'idea': '💡', 'movie': '🎬'
-        }.get(content_type, '⭐')
-        
-        keyboard.append([InlineKeyboardButton(
-            f"❌ {emoji} {short_content}", 
-            callback_data=f"confirm_delete_{fav_id}"
-        )])
-    
-    # Кнопки навигации
-    nav_buttons = []
-    if page > 0:
-        nav_buttons.append(InlineKeyboardButton("⬅️ Назад", callback_data=f"delete_page_{page-1}"))
-    
-    if end_idx < len(favorites):
-        nav_buttons.append(InlineKeyboardButton("Вперед ➡️", callback_data=f"delete_page_{page+1}"))
-    
-    if nav_buttons:
-        keyboard.append(nav_buttons)
-    
-    keyboard.append([InlineKeyboardButton("🔙 К управлению", callback_data="manage_favorites")])
-    
-    return InlineKeyboardMarkup(keyboard)
-
-def get_delete_confirmation_keyboard(fav_id):
-    keyboard = [
-        [InlineKeyboardButton("✅ Да, удалить", callback_data=f"final_delete_{fav_id}")],
-        [InlineKeyboardButton("❌ Нет, отмена", callback_data="view_favorites")]
-    ]
-    return InlineKeyboardMarkup(keyboard)
 # Функции для получения данных
 def get_daily_fact():
     return random.choice(RUSSIAN_FACTS)
@@ -532,22 +441,7 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def favorites_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update_user_info(update)
-    
-    keyboard = get_favorites_management_keyboard()
-    if update.message:
-        await update.message.reply_text(
-            "⭐ **Управление избранным:**\n\n"
-            "Выберите действие:",
-            reply_markup=keyboard
-        )
-    else:
-        query = update.callback_query
-        await query.answer()
-        await query.edit_message_text(
-            "⭐ **Управление избранным:**\n\n"
-            "Выберите действие:",
-            reply_markup=keyboard
-        )
+    user_id = update.effective_user.id
     
     favorites = get_favorites(user_id)
     if favorites:
@@ -579,126 +473,7 @@ async def favorites_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
- # ДОБАВЬ эти обработчики в функцию button_handler:
-
-elif data == "manage_favorites":
-    keyboard = get_favorites_management_keyboard()
-    await query.edit_message_text(
-        "⭐ **Управление избранным:**\n\n"
-        "Выберите действие:",
-        reply_markup=keyboard
-    )
-
-elif data == "view_favorites":
-    user_id = query.from_user.id
-    favorites = get_favorites_with_ids(user_id)
     
-    if favorites:
-        keyboard = get_favorites_list_keyboard(favorites)
-        await query.edit_message_text(
-            "⭐ **Ваше избранное:**\n\n"
-            "Выберите запись для просмотра:",
-            reply_markup=keyboard
-        )
-    else:
-        await query.answer("У вас пока нет избранного")
-
-elif data.startswith("view_fav_"):
-    fav_id = int(data.replace("view_fav_", ""))
-    favorite = get_favorite_by_id(fav_id)
-    
-    if favorite:
-        type_emoji = {
-            'fact': '🎲', 'joke': '😂', 'quote': '📜',
-            'advice': '🌟', 'idea': '💡', 'movie': '🎬'
-        }
-        emoji = type_emoji.get(favorite['type'], '⭐')
-        
-        keyboard = get_favorite_item_keyboard(fav_id, favorite['type'], favorite['content'])
-        await query.edit_message_text(
-            f"{emoji} **Запись из избранного:**\n\n"
-            f"{favorite['content']}",
-            reply_markup=keyboard,
-            parse_mode='Markdown' if favorite['type'] in ['recipe', 'movie'] else None
-        )
-    else:
-        await query.answer("Запись не найдена")
-
-elif data.startswith("fav_page_"):
-    page = int(data.replace("fav_page_", ""))
-    user_id = query.from_user.id
-    favorites = get_favorites_with_ids(user_id)
-    
-    keyboard = get_favorites_list_keyboard(favorites, page)
-    await query.edit_message_text(
-        f"⭐ **Ваше избранное (страница {page + 1}):**\n\n"
-        "Выберите запись для просмотра:",
-        reply_markup=keyboard
-    )
-
-elif data == "delete_favorites":
-    user_id = query.from_user.id
-    favorites = get_favorites_with_ids(user_id)
-    
-    if favorites:
-        keyboard = get_delete_favorites_keyboard(favorites)
-        await query.edit_message_text(
-            "🗑️ **Удаление избранного:**\n\n"
-            "Выберите запись для удаления:",
-            reply_markup=keyboard
-        )
-    else:
-        await query.answer("У вас пока нет избранного для удаления")
-
-elif data.startswith("delete_page_"):
-    page = int(data.replace("delete_page_", ""))
-    user_id = query.from_user.id
-    favorites = get_favorites_with_ids(user_id)
-    
-    keyboard = get_delete_favorites_keyboard(favorites, page)
-    await query.edit_message_text(
-        f"🗑️ **Удаление избранного (страница {page + 1}):**\n\n"
-        "Выберите запись для удаления:",
-        reply_markup=keyboard
-    )
-
-elif data.startswith("confirm_delete_"):
-    fav_id = int(data.replace("confirm_delete_", ""))
-    favorite = get_favorite_by_id(fav_id)
-    
-    if favorite:
-        short_content = favorite['content'][:50] + "..." if len(favorite['content']) > 50 else favorite['content']
-        keyboard = get_delete_confirmation_keyboard(fav_id)
-        await query.edit_message_text(
-            f"❓ **Подтверждение удаления:**\n\n"
-            f"Вы уверены, что хотите удалить эту запись?\n\n"
-            f"`{short_content}`",
-            reply_markup=keyboard,
-            parse_mode='Markdown'
-        )
-    else:
-        await query.answer("Запись не найдена")
-
-elif data.startswith("final_delete_"):
-    fav_id = int(data.replace("final_delete_", ""))
-    user_id = query.from_user.id
-    
-    if delete_favorite(user_id, fav_id):
-        await query.edit_message_text(
-            "✅ **Запись успешно удалена из избранного!**",
-            reply_markup=get_back_keyboard()
-        )
-    else:
-        await query.answer("Ошибка при удалении записи")
-
-# ОБНОВИ существующий обработчик favorites_cmd:
-elif data == "favorites_cmd":
-    keyboard = get_favorites_management_keyboard()
-    await query.edit_message_text(
-        "⭐ **Управление избранным:**\n\n"
-        "Выберите действие:",
-        reply_markup=keyboard
-    )   
     # Обновляем информацию о пользователе
     await update_user_info(update)
     user_id = query.from_user.id
@@ -971,4 +746,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
