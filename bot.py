@@ -60,6 +60,8 @@ def get_main_inline_keyboard():
         [InlineKeyboardButton("🍽️ Случайный рецепт", callback_data="recipe_cmd")],
         [InlineKeyboardButton("🎬 Цитаты из фильмов", callback_data="movie_cmd")],
         [InlineKeyboardButton("🔢 Тест по дате рождения", callback_data="birthdate_cmd")],
+        [InlineKeyboardButton("📊 Статистика", callback_data="stats_cmd")],
+        [InlineKeyboardButton("⭐ Избранное", callback_data="favorites_cmd")],
         [InlineKeyboardButton("📞 Помощь", callback_data="help_cmd")]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -78,6 +80,7 @@ def get_generator_keyboard():
 def get_fact_keyboard():
     keyboard = [
         [InlineKeyboardButton("🎲 Еще факт", callback_data="gen_fact")],
+        [InlineKeyboardButton("❤️ В избранное", callback_data="fav_fact")],
         [InlineKeyboardButton("🔙 В меню", callback_data="back_cmd")]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -85,6 +88,7 @@ def get_fact_keyboard():
 def get_joke_keyboard():
     keyboard = [
         [InlineKeyboardButton("😂 Еще шутку", callback_data="gen_joke")],
+        [InlineKeyboardButton("❤️ В избранное", callback_data="fav_joke")],
         [InlineKeyboardButton("🔙 В меню", callback_data="back_cmd")]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -92,6 +96,7 @@ def get_joke_keyboard():
 def get_idea_keyboard():
     keyboard = [
         [InlineKeyboardButton("💡 Еще идею", callback_data="gen_idea")],
+        [InlineKeyboardButton("❤️ В избранное", callback_data="fav_idea")],
         [InlineKeyboardButton("🔙 В меню", callback_data="back_cmd")]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -99,6 +104,7 @@ def get_idea_keyboard():
 def get_advice_keyboard():
     keyboard = [
         [InlineKeyboardButton("🌟 Еще совет", callback_data="gen_advice")],
+        [InlineKeyboardButton("❤️ В избранное", callback_data="fav_advice")],
         [InlineKeyboardButton("🔙 В меню", callback_data="back_cmd")]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -106,6 +112,7 @@ def get_advice_keyboard():
 def get_quote_keyboard():
     keyboard = [
         [InlineKeyboardButton("📜 Еще цитату", callback_data="gen_quote")],
+        [InlineKeyboardButton("❤️ В избранное", callback_data="fav_quote")],
         [InlineKeyboardButton("🔙 В меню", callback_data="back_cmd")]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -113,6 +120,7 @@ def get_quote_keyboard():
 def get_movie_keyboard():
     keyboard = [
         [InlineKeyboardButton("🎬 Еще цитату из фильма", callback_data="movie_cmd")],
+        [InlineKeyboardButton("❤️ В избранное", callback_data="fav_movie")],
         [InlineKeyboardButton("🔙 В меню", callback_data="back_cmd")]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -257,8 +265,97 @@ def calculate_birth_number(day, month, year):
     
     return total, meanings.get(total, "**Особенная личность** - уникальный и многогранный характер")
 
+# БАЗА ДАННЫХ - упрощенная версия без PostgreSQL
+user_data = {}
+
+def update_user(user_id, username=None, first_name=None, last_name=None):
+    """Упрощенная функция для хранения данных пользователя"""
+    if user_id not in user_data:
+        user_data[user_id] = {
+            'username': username,
+            'first_name': first_name,
+            'last_name': last_name,
+            'created_at': datetime.now(),
+            'last_active': datetime.now(),
+            'requests': [],
+            'favorites': []
+        }
+    else:
+        user_data[user_id].update({
+            'username': username,
+            'first_name': first_name,
+            'last_name': last_name,
+            'last_active': datetime.now()
+        })
+
+def save_request(user_id, request_type, request_data, response_data):
+    """Упрощенная функция для сохранения запроса"""
+    if user_id not in user_data:
+        update_user(user_id)
+    
+    user_data[user_id]['requests'].append({
+        'type': request_type,
+        'data': request_data,
+        'response': response_data,
+        'timestamp': datetime.now()
+    })
+
+def add_to_favorites(user_id, content_type, content):
+    """Упрощенная функция для добавления в избранное"""
+    if user_id not in user_data:
+        update_user(user_id)
+    
+    user_data[user_id]['favorites'].append({
+        'type': content_type,
+        'content': content,
+        'timestamp': datetime.now()
+    })
+    return True
+
+def get_user_stats(user_id):
+    """Упрощенная функция для получения статистики"""
+    if user_id not in user_data:
+        return None
+    
+    user = user_data[user_id]
+    total_requests = len(user['requests'])
+    
+    # Считаем популярные типы запросов
+    type_count = {}
+    for req in user['requests']:
+        req_type = req['type']
+        type_count[req_type] = type_count.get(req_type, 0) + 1
+    
+    popular_types = sorted(type_count.items(), key=lambda x: x[1], reverse=True)[:5]
+    
+    return {
+        'total_requests': total_requests,
+        'popular_types': popular_types,
+        'last_active': user['last_active'],
+        'favorites_count': len(user['favorites'])
+    }
+
+def get_favorites(user_id):
+    """Упрощенная функция для получения избранного"""
+    if user_id not in user_data:
+        return []
+    
+    return [(fav['type'], fav['content'], fav['timestamp']) for fav in user_data[user_id]['favorites']]
+
+async def update_user_info(update: Update):
+    """Обновление информации о пользователе"""
+    user = update.effective_user
+    if user:
+        update_user(
+            user_id=user.id,
+            username=user.username,
+            first_name=user.first_name,
+            last_name=user.last_name
+        )
+
 # Команды бота
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update_user_info(update)
     keyboard = get_main_inline_keyboard()
     await update.message.reply_text(
         '🎉 Добро пожаловать! Я генерирую свежий контент каждый день!\n\n'
@@ -266,7 +363,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         '• 📅 Ежедневные гороскопы\n'
         '• 🍽️ Случайные рецепты\n'
         '• 🎬 Цитаты из фильмов\n'
-        '• 🔢 Нумерология по дате рождения\n\n'
+        '• 🔢 Нумерология по дате рождения\n'
+        '• 📊 Статистика и избранное\n\n'
         'Выберите что вас интересует:',
         reply_markup=keyboard
     )
@@ -281,7 +379,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             '📅 Гороскоп - ежедневный прогноз для вашего знака\n'
             '🍽️ Рецепты - простые идеи для готовки\n'
             '🎬 Фильмы - знаменитые цитаты из кино\n'
-            '🔢 Нумерология - анализ по дате рождения\n\n'
+            '🔢 Нумерология - анализ по дате рождения\n'
+            '📊 Статистика - ваша активность и предпочтения\n'
+            '⭐ Избранное - сохраняйте понравившийся контент\n\n'
             '💫 Контент обновляется ежедневно!',
             reply_markup=keyboard
         )
@@ -294,15 +394,89 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             '📅 Гороскоп - ежедневный прогноз для вашего знака\n'
             '🍽️ Рецепты - простые идеи для готовки\n'
             '🎬 Фильмы - знаменитые цитаты из кино\n'
-            '🔢 Нумерология - анализ по дате рождения\n\n'
+            '🔢 Нумерология - анализ по дате рождения\n'
+            '📊 Статистика - ваша активность и предпочтения\n'
+            '⭐ Избранное - сохраняйте понравившийся контент\n\n'
             '💫 Контент обновляется ежедневно!',
             reply_markup=keyboard
         )
+
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update_user_info(update)
+    user_id = update.effective_user.id
+    
+    stats = get_user_stats(user_id)
+    if stats:
+        message = f"📊 **Ваша статистика:**\n\n"
+        message += f"• Всего запросов: {stats['total_requests']}\n"
+        message += f"• Избранных записей: {stats['favorites_count']}\n"
+        message += f"• Последняя активность: {stats['last_active'].strftime('%d.%m.%Y %H:%M')}\n\n"
+        
+        if stats['popular_types']:
+            message += "🎯 **Популярные запросы:**\n"
+            for req_type, count in stats['popular_types']:
+                type_names = {
+                    'fact': 'Факты',
+                    'joke': 'Шутки', 
+                    'quote': 'Цитаты',
+                    'advice': 'Советы',
+                    'idea': 'Идеи',
+                    'horoscope': 'Гороскопы',
+                    'recipe': 'Рецепты',
+                    'movie': 'Фильмы',
+                    'birthdate': 'Нумерология'
+                }
+                display_name = type_names.get(req_type, req_type)
+                message += f"• {display_name}: {count}\n"
+    else:
+        message = "📊 У вас пока нет статистики. Начните использовать бота!"
+    
+    keyboard = get_back_keyboard()
+    if update.message:
+        await update.message.reply_text(message, reply_markup=keyboard, parse_mode='Markdown')
+    else:
+        query = update.callback_query
+        await query.answer()
+        await query.edit_message_text(message, reply_markup=keyboard, parse_mode='Markdown')
+
+async def favorites_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update_user_info(update)
+    user_id = update.effective_user.id
+    
+    favorites = get_favorites(user_id)
+    if favorites:
+        message = "⭐ **Ваше избранное:**\n\n"
+        for content_type, content, created_at in favorites[:10]:
+            type_emoji = {
+                'fact': '🎲',
+                'joke': '😂',
+                'quote': '📜',
+                'advice': '🌟',
+                'idea': '💡',
+                'movie': '🎬'
+            }
+            emoji = type_emoji.get(content_type, '⭐')
+            short_content = content[:100] + "..." if len(content) > 100 else content
+            message += f"{emoji} {short_content}\n\n"
+    else:
+        message = "⭐ У вас пока нет избранного. Нажмите ❤️ на понравившемся контенте чтобы добавить!"
+    
+    keyboard = get_back_keyboard()
+    if update.message:
+        await update.message.reply_text(message, reply_markup=keyboard, parse_mode='Markdown')
+    else:
+        query = update.callback_query
+        await query.answer()
+        await query.edit_message_text(message, reply_markup=keyboard, parse_mode='Markdown')
 
 # Обработка inline-кнопок
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    
+    # Обновляем информацию о пользователе
+    await update_user_info(update)
+    user_id = query.from_user.id
     
     data = query.data
     
@@ -338,6 +512,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=keyboard,
             parse_mode='Markdown'
         )
+        save_request(user_id, 'recipe', '', recipe)
     
     elif data == "movie_cmd":
         quote = get_movie_quote()
@@ -348,6 +523,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=keyboard,
             parse_mode='Markdown'
         )
+        save_request(user_id, 'movie', '', quote)
     
     elif data == "birthdate_cmd":
         keyboard = get_back_keyboard()
@@ -361,6 +537,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='Markdown'
         )
     
+    elif data == "stats_cmd":
+        await stats_command(update, context)
+        return
+    
+    elif data == "favorites_cmd":
+        await favorites_command(update, context)
+        return
+    
     elif data == "help_cmd":
         await help_command(update, context)
         return
@@ -373,51 +557,61 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             horoscope,
             reply_markup=keyboard
         )
+        save_request(user_id, 'horoscope', sign, horoscope)
     
     elif data == "gen_fact":
         fact = get_daily_fact()
         keyboard = get_fact_keyboard()
         await query.edit_message_text(
-            f'{fact}\n\n'
-            'Хотите еще один факт?',
+            f'{fact}',
             reply_markup=keyboard
         )
+        save_request(user_id, 'fact', '', fact)
     
     elif data == "gen_joke":
         joke = get_daily_joke()
         keyboard = get_joke_keyboard()
         await query.edit_message_text(
-            f'{joke}\n\n'
-            'Хотите еще одну шутку?',
+            f'{joke}',
             reply_markup=keyboard
         )
+        save_request(user_id, 'joke', '', joke)
     
     elif data == "gen_idea":
         idea = get_daily_idea()
         keyboard = get_idea_keyboard()
         await query.edit_message_text(
-            f'{idea}\n\n'
-            'Хотите еще одну идею?',
+            f'{idea}',
             reply_markup=keyboard
         )
+        save_request(user_id, 'idea', '', idea)
     
     elif data == "gen_advice":
         advice = get_daily_advice()
         keyboard = get_advice_keyboard()
         await query.edit_message_text(
-            f'{advice}\n\n'
-            'Хотите еще один совет?',
+            f'{advice}',
             reply_markup=keyboard
         )
+        save_request(user_id, 'advice', '', advice)
     
     elif data == "gen_quote":
         quote = get_daily_quote()
         keyboard = get_quote_keyboard()
         await query.edit_message_text(
-            f'{quote}\n\n'
-            'Хотите еще одну цитату?',
+            f'{quote}',
             reply_markup=keyboard
         )
+        save_request(user_id, 'quote', '', quote)
+    
+    elif data.startswith("fav_"):
+        content_type = data.replace("fav_", "")
+        message_text = query.message.text
+        
+        if add_to_favorites(user_id, content_type, message_text):
+            await query.answer("✅ Добавлено в избранное!")
+        else:
+            await query.answer("❌ Ошибка при добавлении в избранное")
     
     elif data == "back_cmd":
         keyboard = get_main_inline_keyboard()
@@ -428,7 +622,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Обработка даты рождения
 async def handle_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update_user_info(update)
     text = update.message.text
+    user_id = update.effective_user.id
+    
     try:
         if '.' in text:
             day, month, year = map(int, text.split('.'))
@@ -442,15 +639,19 @@ async def handle_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if 1 <= day <= 31 and 1 <= month <= 12 and 1900 <= year <= 2023:
             number, meaning = calculate_birth_number(day, month, year)
             keyboard = get_back_keyboard()
-            await update.message.reply_text(
+            result_text = (
                 f'🔢 **Результат нумерологии:**\n\n'
                 f'📅 Дата рождения: {text}\n'
                 f'✨ Число судьбы: **{number}**\n\n'
                 f'📖 **Характеристика:** {meaning}\n\n'
-                f'💫 Это число отражает ваши врожденные таланты и потенциал!',
+                f'💫 Это число отражает ваши врожденные таланты и потенциал!'
+            )
+            await update.message.reply_text(
+                result_text,
                 reply_markup=keyboard,
                 parse_mode='Markdown'
             )
+            save_request(user_id, 'birthdate', text, result_text)
         else:
             await update.message.reply_text(
                 '❌ Неверная дата. Проверьте формат: ДД.ММ.ГГГГ\n'
@@ -464,29 +665,49 @@ async def handle_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Обработка обычных сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update_user_info(update)
     text = update.message.text.lower()
+    user_id = update.effective_user.id
     
     if any(c.isdigit() for c in text) and ('.' in text or '-' in text or '/' in text):
         await handle_birthdate(update, context)
         return
     
     if any(word in text for word in ['факт', 'fact']):
-        await update.message.reply_text(get_daily_fact())
+        response = get_daily_fact()
+        await update.message.reply_text(response)
+        save_request(user_id, 'fact', text, response)
     elif any(word in text for word in ['шутка', 'анекдот', 'joke']):
-        await update.message.reply_text(get_daily_joke())
+        response = get_daily_joke()
+        await update.message.reply_text(response)
+        save_request(user_id, 'joke', text, response)
     elif any(word in text for word in ['цитата', 'quote']):
-        await update.message.reply_text(get_daily_quote())
+        response = get_daily_quote()
+        await update.message.reply_text(response)
+        save_request(user_id, 'quote', text, response)
     elif any(word in text for word in ['совет', 'advice']):
-        await update.message.reply_text(get_daily_advice())
+        response = get_daily_advice()
+        await update.message.reply_text(response)
+        save_request(user_id, 'advice', text, response)
     elif any(word in text for word in ['идея', 'idea']):
-        await update.message.reply_text(get_daily_idea())
+        response = get_daily_idea()
+        await update.message.reply_text(response)
+        save_request(user_id, 'idea', text, response)
     elif any(word in text for word in ['гороскоп', 'horoscope']):
         keyboard = get_zodiac_keyboard()
         await update.message.reply_text('Выберите ваш знак зодиака:', reply_markup=keyboard)
     elif any(word in text for word in ['рецепт', 'recipe']):
-        await update.message.reply_text(get_daily_recipe(), parse_mode='Markdown')
+        response = get_daily_recipe()
+        await update.message.reply_text(response, parse_mode='Markdown')
+        save_request(user_id, 'recipe', text, response)
     elif any(word in text for word in ['фильм', 'movie']):
-        await update.message.reply_text(get_movie_quote(), parse_mode='Markdown')
+        response = get_movie_quote()
+        await update.message.reply_text(response, parse_mode='Markdown')
+        save_request(user_id, 'movie', text, response)
+    elif any(word in text for word in ['статистика', 'stats']):
+        await stats_command(update, context)
+    elif any(word in text for word in ['избранное', 'favorites']):
+        await favorites_command(update, context)
     elif any(word in text for word in ['число', 'нумеролог']):
         await update.message.reply_text(
             '🔢 Отправьте дату рождения в формате: ДД.ММ.ГГГГ\nНапример: 15.05.1990'
@@ -499,6 +720,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             '• "шутка" - случайная шутка\n'
             '• "гороскоп" - ежедневный гороскоп\n'
             '• "рецепт" - идея для готовки\n'
+            '• "статистика" - ваша активность\n'
+            '• "избранное" - сохраненные записи\n'
             '• "15.05.1990" - нумерология по дате',
             reply_markup=keyboard
         )
@@ -509,11 +732,13 @@ def main():
         
         application.add_handler(CommandHandler("start", start_command))
         application.add_handler(CommandHandler("help", help_command))
+        application.add_handler(CommandHandler("stats", stats_command))
+        application.add_handler(CommandHandler("favorites", favorites_command))
         
         application.add_handler(CallbackQueryHandler(button_handler))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
         
-        print("✅ Бот запускается...")
+        print("✅ Бот с улучшениями запускается...")
         application.run_polling()
         
     except Exception as e:
