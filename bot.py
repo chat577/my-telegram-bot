@@ -14,61 +14,116 @@ logging.basicConfig(
 
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 
+# Словарь тематических изображений
+THEMATIC_IMAGES = {
+    "космос": [
+        "https://images.unsplash.com/photo-1446776653964-20c1d3a81b06",  # космос
+        "https://images.unsplash.com/photo-1462331940025-496dfbfc7564",  # галактика
+    ],
+    "животные": [
+        "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba",  # кот
+        "https://images.unsplash.com/photo-1543852786-1cf6624b9987",  # собака
+    ],
+    "природа": [
+        "https://images.unsplash.com/photo-1501854140801-50d01698950b",  # горы
+        "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05",  # лес
+    ],
+    "город": [
+        "https://images.unsplash.com/photo-1449824913935-59a10b8d2000",  # город
+        "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b",  # небоскребы
+    ],
+    "технологии": [
+        "https://images.unsplash.com/photo-1485827404703-89b55fcc595e",  # робот
+        "https://images.unsplash.com/photo-1535223289827-42f1e9919769",  # будущее
+    ]
+}
+
 # Клавиатуры
 def get_main_keyboard():
     keyboard = [
         [InlineKeyboardButton("🎨 Сгенерировать картинку", callback_data="generate_image")],
+        [InlineKeyboardButton("🎯 Популярные запросы", callback_data="popular_requests")],
         [InlineKeyboardButton("📖 Инструкция", callback_data="help_cmd")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def get_popular_requests_keyboard():
+    keyboard = [
+        [InlineKeyboardButton("🚀 Космос и планеты", callback_data="req_space")],
+        [InlineKeyboardButton("🐱 Милые животные", callback_data="req_animals")],
+        [InlineKeyboardButton("🏔️ Природа и пейзажи", callback_data="req_nature")],
+        [InlineKeyboardButton("🏙️ Города будущего", callback_data="req_city")],
+        [InlineKeyboardButton("🤖 Роботы и технологии", callback_data="req_tech")],
+        [InlineKeyboardButton("🔙 Назад", callback_data="back_cmd")]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 def get_generate_keyboard():
     keyboard = [
-        [InlineKeyboardButton("🔄 Сгенерировать еще", callback_data="generate_another")],
+        [InlineKeyboardButton("🔄 Сгенерировать похожее", callback_data="generate_similar")],
+        [InlineKeyboardButton("🎨 Новый запрос", callback_data="generate_image")],
         [InlineKeyboardButton("🔙 В меню", callback_data="back_cmd")]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 def get_back_keyboard():
-    keyboard = [
-        [InlineKeyboardButton("🔙 Назад", callback_data="back_cmd")]
-    ]
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад", callback_data="back_cmd")]])
 
-# Хранение данных пользователей
-user_requests = {}
+def analyze_request(text):
+    """Анализирует запрос и определяет тему"""
+    text_lower = text.lower()
+    
+    if any(word in text_lower for word in ['космос', 'планет', 'звезд', 'галактик']):
+        return "космос"
+    elif any(word in text_lower for word in ['кот', 'собак', 'животн', 'панда', 'медвед']):
+        return "животные"
+    elif any(word in text_lower for word in ['природ', 'лес', 'гор', 'озер', 'пейзаж']):
+        return "природа"
+    elif any(word in text_lower for word in ['город', 'здани', 'небоскреб', 'улиц']):
+        return "город"
+    elif any(word in text_lower for word in ['робот', 'техник', 'будущ', 'искусс']):
+        return "технологии"
+    else:
+        return "random"
 
-def generate_image_from_text(text):
-    """
-    Генерирует изображение на основе текста
-    Используем разные стратегии для демо
-    """
+def generate_smart_image(text):
+    """Умная генерация на основе тематики"""
     try:
-        # Стратегия 1: Unsplash Source (бесплатные случайные изображения)
-        unsplash_url = f"https://source.unsplash.com/512x512/?{requests.utils.quote(text)}"
+        theme = analyze_request(text)
         
-        # Стратегия 2: Lorem Picsum (просто случайные изображения)
-        random_id = random.randint(1, 1000)
-        picsum_url = f"https://picsum.photos/512/512?random={random_id}"
-        
-        # Стратегия 3: Placeholder с цветом на основе текста
-        text_hash = abs(hash(text)) % 16777215  # RGB цвет
-        placeholder_url = f"https://via.placeholder.com/512/{(text_hash >> 16) & 255:02x}{(text_hash >> 8) & 255:02x}{text_hash & 255:02x}/ffffff?text={requests.utils.quote(text[:30])}"
-        
-        # Выбираем случайную стратегию
-        strategies = [unsplash_url, picsum_url, placeholder_url]
-        image_url = random.choice(strategies)
-        
-        return {
-            "success": True,
-            "image_url": image_url,
-            "description": f"🖼️ Сгенерировано по запросу: '{text}'"
-        }
+        if theme in THEMATIC_IMAGES:
+            # Выбираем случайное изображение из тематической коллекции
+            image_url = random.choice(THEMATIC_IMAGES[theme])
+            return {
+                "success": True,
+                "image_url": image_url,
+                "theme": theme,
+                "description": f"🎨 Тема: {theme}\n📝 Запрос: '{text}'"
+            }
+        else:
+            # Случайное качественное изображение
+            collections = {
+                "космос": 444,
+                "животные": 105,
+                "природа": 106,
+                "город": 116,
+                "технологии": 109
+            }
+            collection_id = random.choice(list(collections.values()))
+            image_url = f"https://source.unsplash.com/collection/{collection_id}/512x512"
+            
+            return {
+                "success": True,
+                "image_url": image_url,
+                "theme": "random",
+                "description": f"🎨 Случайная подборка\n📝 Запрос: '{text}'"
+            }
+            
     except Exception as e:
-        logging.error(f"Error generating image: {e}")
+        logging.error(f"Error in smart generation: {e}")
         return {
             "success": False,
-            "error": "Ошибка генерации изображения"
+            "error": "Ошибка генерации"
         }
 
 # Команды бота
@@ -76,12 +131,12 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = get_main_keyboard()
     
     welcome_text = (
-        "🎨 **Добро пожаловать в генератор изображений!**\n\n"
-        "Я помогу вам создать уникальные изображения по вашему текстовому описанию.\n\n"
-        "**Что я умею:**\n"
-        "• 🎨 Генерировать картинки по тексту\n"
-        "• ⚡ Быстро обрабатывать запросы\n"
-        "• 🖼️ Создавать уникальные изображения\n\n"
+        "🎨 **Умный генератор изображений**\n\n"
+        "Я подбираю релевантные изображения по вашему описанию!\n\n"
+        "**Как это работает:**\n"
+        "• Анализирую ваш запрос\n"
+        "• Подбираю тематическое изображение\n"
+        "• Нахожу качественные картинки\n\n"
         "Выберите действие:"
     )
     
@@ -94,30 +149,25 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
-        "📖 **Инструкция по использованию:**\n\n"
-        "**Как генерировать изображения:**\n"
-        "1. Нажмите '🎨 Сгенерировать картинку'\n"
-        "2. Введите текстовое описание\n"
-        "3. Получите ваше изображение!\n\n"
-        "**Примеры запросов:**\n"
-        "• 'кот космос'\n"
-        "• 'закат горы'\n"
-        "• 'город будущее'\n"
-        "• 'панда бамбук'\n\n"
+        "📖 **Как получить лучшие результаты:**\n\n"
+        "**Эффективные запросы:**\n"
+        "• 'Космос и планеты' 🚀\n"
+        "• 'Милые коты и собаки' 🐱\n" 
+        "• 'Горные пейзажи' 🏔️\n"
+        "• 'Города будущего' 🏙️\n"
+        "• 'Роботы и технологии' 🤖\n\n"
         "**Советы:**\n"
-        "• Используйте английские слова для лучших результатов\n"
-        "• Будьте конкретны в описаниях\n"
-        "• Экспериментируйте с разными запросами!"
+        "• Используйте конкретные темы\n"
+        "• Попробуйте 'Популярные запросы'\n"
+        "• Экспериментируйте с разными темами!"
     )
     
-    keyboard = get_back_keyboard()
-    
     if update.message:
-        await update.message.reply_text(help_text, reply_markup=keyboard, parse_mode='Markdown')
+        await update.message.reply_text(help_text, reply_markup=get_back_keyboard(), parse_mode='Markdown')
     else:
         query = update.callback_query
         await query.answer()
-        await query.edit_message_text(help_text, reply_markup=keyboard, parse_mode='Markdown')
+        await query.edit_message_text(help_text, reply_markup=get_back_keyboard(), parse_mode='Markdown')
 
 # Обработка inline-кнопок
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -132,32 +182,44 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     elif data == "generate_image":
         instruction_text = (
-            "🎨 **Какую картинку вам сгенерировать сегодня?**\n\n"
-            "Опишите словами то, что хотите увидеть на изображении.\n\n"
-            "**Примеры:**\n"
-            "• 'cat space' (кот в космосе)\n"
-            "• 'sunset mountains' (закат в горах)\n"
-            "• 'robot future' (робот будущее)\n\n"
-            "💡 **Совет:** Используйте английские слова для лучших результатов!\n\n"
-            "Введите ваш текст:"
+            "🎨 **Опишите желаемое изображение:**\n\n"
+            "**Примеры эффективных запросов:**\n"
+            "• 'Космос с планетами'\n"
+            "• 'Милые животные'\n" 
+            "• 'Горный пейзаж'\n"
+            "• 'Город будущего'\n"
+            "• 'Робот технологии'\n\n"
+            "Введите ваш запрос:"
         )
         
-        # Сохраняем состояние для этого пользователя
         context.user_data[user_id] = {'waiting_for_text': True}
-        
         await query.edit_message_text(instruction_text, reply_markup=get_back_keyboard(), parse_mode='Markdown')
     
-    elif data == "generate_another":
-        # Генерируем еще одно изображение с тем же текстом
-        user_text = context.user_data.get(user_id, {}).get('last_text', '')
+    elif data == "popular_requests":
+        await query.edit_message_text(
+            "🎯 **Популярные категории:**\n\n"
+            "Выберите тему для генерации:",
+            reply_markup=get_popular_requests_keyboard()
+        )
+    
+    elif data.startswith("req_"):
+        themes = {
+            "req_space": "космос планеты звезды",
+            "req_animals": "милые животные коты собаки", 
+            "req_nature": "горный пейзаж природа",
+            "req_city": "город будущего архитектура",
+            "req_tech": "робот технологии будущее"
+        }
         
-        if user_text:
-            await process_image_generation(update, context, user_text, user_id)
+        theme_text = themes[data]
+        await process_image_generation(update, context, theme_text, user_id)
+    
+    elif data == "generate_similar":
+        last_text = context.user_data.get(user_id, {}).get('last_text', '')
+        if last_text:
+            await process_image_generation(update, context, last_text, user_id)
         else:
-            await query.edit_message_text(
-                "❌ Не найден предыдущий текст. Начните заново.",
-                reply_markup=get_main_keyboard()
-            )
+            await query.answer("❌ Нет предыдущего запроса")
     
     elif data == "help_cmd":
         await help_command(update, context)
@@ -168,46 +230,23 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def process_image_generation(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str, user_id: int):
     """Обрабатывает генерацию изображения"""
     
-    # Показываем сообщение о начале генерации
     if update.callback_query:
         await update.callback_query.edit_message_text(
-            f"⚡ **Генерирую изображение...**\n\n"
+            f"🔍 **Ищу подходящее изображение...**\n\n"
             f"Запрос: '{user_text}'\n\n"
-            f"Это займет несколько секунд ⏳",
-            parse_mode='Markdown'
-        )
-    elif update.message:
-        await update.message.reply_text(
-            f"⚡ **Генерирую изображение...**\n\n"
-            f"Запрос: '{user_text}'\n\n"
-            f"Это займет несколько секунд ⏳",
+            f"⏳ Подбираю лучший вариант...",
             parse_mode='Markdown'
         )
     
-    # Генерируем изображение
-    result = generate_image_from_text(user_text)
+    result = generate_smart_image(user_text)
     
     if result["success"]:
-        # Сохраняем в историю пользователя
-        if user_id not in user_requests:
-            user_requests[user_id] = []
+        context.user_data[user_id] = {'last_text': user_text}
         
-        user_requests[user_id].append({
-            "text": user_text,
-            "timestamp": datetime.now().isoformat(),
-            "image_url": result["image_url"]
-        })
-        
-        # Сохраняем текст для повторной генерации
-        if user_id not in context.user_data:
-            context.user_data[user_id] = {}
-        context.user_data[user_id]['last_text'] = user_text
-        
-        # Отправляем изображение
         success_text = (
-            f"✅ **Изображение готово!**\n\n"
-            f"📝 Запрос: '{user_text}'\n\n"
-            f"Что дальше?"
+            f"✅ **Изображение найдено!**\n\n"
+            f"{result['description']}\n\n"
+            f"💡 Попробуйте 'похожее' для другого варианта!"
         )
         
         try:
@@ -227,58 +266,50 @@ async def process_image_generation(update: Update, context: ContextTypes.DEFAULT
                     parse_mode='Markdown'
                 )
         except Exception as e:
-            logging.error(f"Error sending photo: {e}")
-            # Если не удалось отправить фото, отправляем ссылку
-            error_message = (
-                f"✅ **Изображение готово!**\n\n"
-                f"📝 Запрос: '{user_text}'\n\n"
-                f"🔗 Ссылка на изображение: {result['image_url']}\n\n"
-                f"Что дальше?"
-            )
-            if update.callback_query:
-                await update.callback_query.edit_message_text(error_message, reply_markup=get_generate_keyboard(), parse_mode='Markdown')
-            else:
-                await update.message.reply_text(error_message, reply_markup=get_generate_keyboard(), parse_mode='Markdown')
+            await handle_photo_error(update, context, result, user_text)
     
     else:
-        error_text = (
-            f"❌ **Ошибка генерации**\n\n"
-            f"Не удалось создать изображение по запросу: '{user_text}'\n\n"
-            f"Попробуйте другой текст или повторите позже."
-        )
+        error_text = f"❌ Не удалось найти изображение для: '{user_text}'"
         if update.callback_query:
-            await update.callback_query.edit_message_text(error_text, reply_markup=get_generate_keyboard(), parse_mode='Markdown')
+            await update.callback_query.edit_message_text(error_text, reply_markup=get_main_keyboard())
         else:
-            await update.message.reply_text(error_text, reply_markup=get_generate_keyboard(), parse_mode='Markdown')
+            await update.message.reply_text(error_text, reply_markup=get_main_keyboard())
+
+async def handle_photo_error(update: Update, context: ContextTypes.DEFAULT_TYPE, result: dict, user_text: str):
+    """Обрабатывает ошибки отправки фото"""
+    error_message = (
+        f"✅ **Изображение готово!**\n\n"
+        f"📝 Запрос: '{user_text}'\n\n"
+        f"🔗 Ссылка: {result['image_url']}\n\n"
+        f"💡 Скопируйте ссылку для просмотра!"
+    )
+    
+    if update.callback_query:
+        await update.callback_query.edit_message_text(error_message, reply_markup=get_generate_keyboard())
+    else:
+        await update.message.reply_text(error_message, reply_markup=get_generate_keyboard())
 
 # Обработка текстовых сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text.strip()
     
-    # Проверяем, ждем ли мы текст для генерации
     if context.user_data.get(user_id, {}).get('waiting_for_text'):
-        # Обрабатываем генерацию
         context.user_data[user_id]['waiting_for_text'] = False
         await process_image_generation(update, context, text, user_id)
-    
     else:
-        # Обычное сообщение - показываем меню
         await start_command(update, context)
 
 def main():
     try:
         application = Application.builder().token(BOT_TOKEN).build()
         
-        # Команды
         application.add_handler(CommandHandler("start", start_command))
         application.add_handler(CommandHandler("help", help_command))
-        
-        # Обработчики
         application.add_handler(CallbackQueryHandler(button_handler))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
         
-        print("✅ Бот-генератор изображений запускается...")
+        print("✅ Умный генератор изображений запускается...")
         application.run_polling()
         
     except Exception as e:
