@@ -1,0 +1,82 @@
+{
+  "be": {
+    "phonetic": "/biː/",
+    "translation": "быть",
+    "past": "was/were",
+    "participle": "been",
+    "examples": ["I am happy", "They are students", "She is a teacher"],
+    "level": "A1"
+  },
+  "have": {
+    "phonetic": "/hæv/",
+    "translation": "иметь",
+    "past": "had",
+    "participle": "had",
+    "examples": ["I have a car", "She has a book", "We have time"],
+    "level": "A1"
+  },
+  "do": {
+    "phonetic": "/duː/",
+    "translation": "делать",
+    "past": "did",
+    "participle": "done",
+    "examples": ["I do homework", "What do you do?", "They do sports"],
+    "level": "A1"
+  },
+  "say": {
+    "phonetic": "/seɪ/",
+    "translation": "говорить",
+    "past": "said",
+    "participle": "said",
+    "examples": ["I say hello", "She says goodbye", "Say your name"],
+    "level": "A1"
+  },
+  "get": {
+    "phonetic": "/ɡet/",
+    "translation": "получать",
+    "past": "got",
+    "participle": "got/gotten",
+    "examples": ["I get up early", "Get a job", "She gets good grades"],
+    "level": "A1"
+  },
+  "make": {
+    "phonetic": "/meɪk/",
+    "translation": "делать",
+    "past": "made",
+    "participle": "made",
+    "examples": ["Make a cake", "Make money", "They make decisions"],
+    "level": "A1"
+  },
+  "go": {
+    "phonetic": "/ɡoʊ/",
+    "translation": "идти",
+    "past": "went",
+    "participle": "gone",
+    "examples": ["Go to school", "Go home", "We go shopping"],
+    "level": "A1"
+  },
+  "know": {
+    "phonetic": "/noʊ/",
+    "translation": "знать",
+    "past": "knew",
+    "participle": "known",
+    "examples": ["I know him", "Do you know?", "She knows English"],
+    "level": "A1"
+  },
+  "take": {
+    "phonetic": "/teɪk/",
+    "translation": "брать",
+    "past": "took",
+    "participle": "taken",
+    "examples": ["Take a book", "Take a break", "Take your time"],
+    "level": "A1"
+  },
+  "see": {
+    "phonetic": "/siː/",
+    "translation": "видеть",
+    "past": "saw",
+    "participle": "seen",
+    "examples": ["I see you", "See a movie", "We see results"],
+    "level": "A1"
+  }
+}
