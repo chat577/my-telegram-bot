@@ -1,11 +1,9 @@
 import os
 import logging
 import random
-import aiohttp
-import requests
-from bs4 import BeautifulSoup
+import httpx
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from dotenv import load_dotenv
 
 logging.basicConfig(
@@ -16,36 +14,88 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-class EnglishAPI:
+class EnglishDictionary:
     def __init__(self):
-        self.session = None
-    
-    async def get_verb_info(self, verb):
-        """Получает информацию о глаголе из различных источников"""
-        try:
-            # Попробуем Free Dictionary API
-            async with aiohttp.ClientSession() as session:
-                url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{verb}"
-                async with session.get(url) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        return self._parse_dictionary_response(verb, data)
-        except Exception as e:
-            logger.error(f"Dictionary API error: {e}")
+        self.verbs_db = {
+            'be': {'phonetic': '/biː/', 'translation': 'быть', 'past': 'was/were', 'participle': 'been', 'examples': ['I am happy', 'They are students']},
+            'have': {'phonetic': '/hæv/', 'translation': 'иметь', 'past': 'had', 'participle': 'had', 'examples': ['I have a car', 'She has a book']},
+            'do': {'phonetic': '/duː/', 'translation': 'делать', 'past': 'did', 'participle': 'done', 'examples': ['I do homework', 'What do you do?']},
+            'say': {'phonetic': '/seɪ/', 'translation': 'говорить', 'past': 'said', 'participle': 'said', 'examples': ['I say hello', 'She says goodbye']},
+            'get': {'phonetic': '/ɡet/', 'translation': 'получать', 'past': 'got', 'participle': 'got/gotten', 'examples': ['I get up early', 'Get a job']},
+            'make': {'phonetic': '/meɪk/', 'translation': 'делать', 'past': 'made', 'participle': 'made', 'examples': ['Make a cake', 'Make money']},
+            'go': {'phonetic': '/ɡoʊ/', 'translation': 'идти', 'past': 'went', 'participle': 'gone', 'examples': ['Go to school', 'Go home']},
+            'know': {'phonetic': '/noʊ/', 'translation': 'знать', 'past': 'knew', 'participle': 'known', 'examples': ['I know him', 'Do you know?']},
+            'take': {'phonetic': '/teɪk/', 'translation': 'брать', 'past': 'took', 'participle': 'taken', 'examples': ['Take a book', 'Take a break']},
+            'see': {'phonetic': '/siː/', 'translation': 'видеть', 'past': 'saw', 'participle': 'seen', 'examples': ['I see you', 'See a movie']},
+            'come': {'phonetic': '/kʌm/', 'translation': 'приходить', 'past': 'came', 'participle': 'come', 'examples': ['Come here', 'Come tomorrow']},
+            'think': {'phonetic': '/θɪŋk/', 'translation': 'думать', 'past': 'thought', 'participle': 'thought', 'examples': ['I think so', 'Think about it']},
+            'look': {'phonetic': '/lʊk/', 'translation': 'смотреть', 'past': 'looked', 'participle': 'looked', 'examples': ['Look at me', 'Look for keys']},
+            'want': {'phonetic': '/wɒnt/', 'translation': 'хотеть', 'past': 'wanted', 'participle': 'wanted', 'examples': ['I want water', 'Want to go?']},
+            'give': {'phonetic': '/ɡɪv/', 'translation': 'давать', 'past': 'gave', 'participle': 'given', 'examples': ['Give me money', 'Give a present']},
+            'find': {'phonetic': '/faɪnd/', 'translation': 'находить', 'past': 'found', 'participle': 'found', 'examples': ['Find a job', 'Find keys']},
+            'tell': {'phonetic': '/tel/', 'translation': 'рассказывать', 'past': 'told', 'participle': 'told', 'examples': ['Tell a story', 'Tell me']},
+            'work': {'phonetic': '/wɜːrk/', 'translation': 'работать', 'past': 'worked', 'participle': 'worked', 'examples': ['Work hard', 'Work from home']},
+        }
         
-        # Если API не сработал, используем локальную базу
-        return self._get_local_verb_info(verb)
+        self.words_db = {
+            'hello': {'phonetic': '/həˈloʊ/', 'translation': 'привет', 'examples': ['Hello! How are you?']},
+            'time': {'phonetic': '/taɪm/', 'translation': 'время', 'examples': ['What time is it?']},
+            'people': {'phonetic': '/ˈpiːpəl/', 'translation': 'люди', 'examples': ['Many people think...']},
+            'water': {'phonetic': '/ˈwɔːtər/', 'translation': 'вода', 'examples': ['I drink water']},
+            'food': {'phonetic': '/fuːd/', 'translation': 'еда', 'examples': ['I like Chinese food']},
+            'house': {'phonetic': '/haʊs/', 'translation': 'дом', 'examples': ['My house is big']},
+            'city': {'phonetic': '/ˈsɪti/', 'translation': 'город', 'examples': ['I live in a big city']},
+            'book': {'phonetic': '/bʊk/', 'translation': 'книга', 'examples': ['Read a book']},
+            'friend': {'phonetic': '/frend/', 'translation': 'друг', 'examples': ['My best friend']},
+        }
+
+    async def get_word_info(self, word):
+        """Получает информацию о слове из локальной базы или API"""
+        word = word.lower()
+        
+        # Сначала проверяем локальную базу
+        if word in self.verbs_db:
+            info = self.verbs_db[word].copy()
+            info['type'] = 'verb'
+            info['word'] = word
+            return info
+        elif word in self.words_db:
+            info = self.words_db[word].copy()
+            info['type'] = 'word'
+            info['word'] = word
+            return info
+        
+        # Если нет в локальной базе, пробуем API
+        return await self._get_from_api(word)
     
-    def _parse_dictionary_response(self, verb, data):
+    async def _get_from_api(self, word):
+        """Пробует получить информацию из Free Dictionary API"""
+        try:
+            async with httpx.AsyncClient() as client:
+                url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
+                response = await client.get(url, timeout=10.0)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    return self._parse_api_response(word, data)
+        except Exception as e:
+            logger.error(f"API error for {word}: {e}")
+        
+        # Если API не сработал, возвращаем базовую информацию
+        return self._get_basic_info(word)
+    
+    def _parse_api_response(self, word, data):
         """Парсит ответ от Dictionary API"""
         if not data:
             return None
         
         word_data = data[0]
         result = {
-            'word': verb,
+            'word': word,
             'phonetic': '',
-            'meanings': [],
+            'translation': '',
+            'examples': [],
+            'type': 'word',
             'source': 'Dictionary API'
         }
         
@@ -58,114 +108,39 @@ class EnglishAPI:
                     result['phonetic'] = phonetics['text']
                     break
         
-        # Получаем значения и переводы
-        for meaning in word_data.get('meanings', []):
-            part_of_speech = meaning.get('partOfSpeech', '')
-            for definition in meaning.get('definitions', []):
-                def_text = definition.get('definition', '')
-                example = definition.get('example', '')
-                
-                # Простой перевод на русский (можно улучшить)
-                translation = self._simple_translate(def_text)
-                
-                result['meanings'].append({
-                    'partOfSpeech': part_of_speech,
-                    'definition': def_text,
-                    'translation': translation,
-                    'example': example
-                })
+        # Получаем первое значение
+        if 'meanings' in word_data and word_data['meanings']:
+            first_meaning = word_data['meanings'][0]
+            if 'definitions' in first_meaning and first_meaning['definitions']:
+                first_def = first_meaning['definitions'][0]
+                result['translation'] = first_def.get('definition', '')[:100] + '...'
+                if 'example' in first_def:
+                    result['examples'].append(first_def['example'])
         
         return result
     
-    def _simple_translate(self, text):
-        """Простой перевод через локальную базу"""
-        common_words = {
-            'be': 'быть',
-            'have': 'иметь',
-            'do': 'делать',
-            'say': 'говорить',
-            'get': 'получать',
-            'make': 'делать',
-            'go': 'идти',
-            'know': 'знать',
-            'take': 'брать',
-            'see': 'видеть',
-            'come': 'приходить',
-            'think': 'думать',
-            'look': 'смотреть',
-            'want': 'хотеть',
-            'give': 'давать',
-            'use': 'использовать',
-            'find': 'находить',
-            'tell': 'рассказывать',
-            'ask': 'спрашивать',
-            'work': 'работать',
-            'seem': 'казаться',
-            'feel': 'чувствовать',
-            'try': 'пытаться',
-            'leave': 'покидать',
-            'call': 'звонить'
+    def _get_basic_info(self, word):
+        """Возвращает базовую информацию о слове"""
+        return {
+            'word': word,
+            'phonetic': '/транскрипция/',
+            'translation': 'перевод',
+            'examples': [f'I {word} every day' if word in self.verbs_db else f'This is {word}'],
+            'type': 'verb' if word in self.verbs_db else 'word',
+            'source': 'Local database'
         }
-        
-        # Ищем совпадения в тексте
-        for word, translation in common_words.items():
-            if word in text.lower():
-                return translation
-        return "перевод"
-    
-    def _get_local_verb_info(self, verb):
-        """Локальная база глаголов с транскрипцией"""
-        verbs_db = {
-            'be': {'phonetic': '/biː/', 'translation': 'быть', 'past': 'was/were', 'participle': 'been'},
-            'have': {'phonetic': '/hæv/', 'translation': 'иметь', 'past': 'had', 'participle': 'had'},
-            'do': {'phonetic': '/duː/', 'translation': 'делать', 'past': 'did', 'participle': 'done'},
-            'say': {'phonetic': '/seɪ/', 'translation': 'говорить', 'past': 'said', 'participle': 'said'},
-            'get': {'phonetic': '/ɡet/', 'translation': 'получать', 'past': 'got', 'participle': 'got/gotten'},
-            'make': {'phonetic': '/meɪk/', 'translation': 'делать', 'past': 'made', 'participle': 'made'},
-            'go': {'phonetic': '/ɡoʊ/', 'translation': 'идти', 'past': 'went', 'participle': 'gone'},
-            'know': {'phonetic': '/noʊ/', 'translation': 'знать', 'past': 'knew', 'participle': 'known'},
-            'take': {'phonetic': '/teɪk/', 'translation': 'брать', 'past': 'took', 'participle': 'taken'},
-            'see': {'phonetic': '/siː/', 'translation': 'видеть', 'past': 'saw', 'participle': 'seen'},
-            'come': {'phonetic': '/kʌm/', 'translation': 'приходить', 'past': 'came', 'participle': 'come'},
-            'think': {'phonetic': '/θɪŋk/', 'translation': 'думать', 'past': 'thought', 'participle': 'thought'},
-            'look': {'phonetic': '/lʊk/', 'translation': 'смотреть', 'past': 'looked', 'participle': 'looked'},
-            'want': {'phonetic': '/wɒnt/', 'translation': 'хотеть', 'past': 'wanted', 'participle': 'wanted'},
-            'give': {'phonetic': '/ɡɪv/', 'translation': 'давать', 'past': 'gave', 'participle': 'given'},
-            'use': {'phonetic': '/juːz/', 'translation': 'использовать', 'past': 'used', 'participle': 'used'},
-            'find': {'phonetic': '/faɪnd/', 'translation': 'находить', 'past': 'found', 'participle': 'found'},
-            'tell': {'phonetic': '/tel/', 'translation': 'рассказывать', 'past': 'told', 'participle': 'told'},
-            'ask': {'phonetic': '/æsk/', 'translation': 'спрашивать', 'past': 'asked', 'participle': 'asked'},
-            'work': {'phonetic': '/wɜːrk/', 'translation': 'работать', 'past': 'worked', 'participle': 'worked'},
-        }
-        
-        if verb in verbs_db:
-            return {
-                'word': verb,
-                'phonetic': verbs_db[verb]['phonetic'],
-                'meanings': [{
-                    'partOfSpeech': 'verb',
-                    'definition': f'to {verb}',
-                    'translation': verbs_db[verb]['translation'],
-                    'example': f'I {verb} every day'
-                }],
-                'past': verbs_db[verb]['past'],
-                'participle': verbs_db[verb]['participle'],
-                'source': 'Local Database'
-            }
-        
-        return None
 
-# Создаем экземпляр API
-english_api = EnglishAPI()
+# Создаем экземпляр словаря
+dictionary = EnglishDictionary()
 
 # --- КЛАВИАТУРЫ ---
 def get_main_menu_keyboard():
     keyboard = [
-        [InlineKeyboardButton("🔤 Найти слово/глагол", callback_data="search_word")],
+        [InlineKeyboardButton("🔤 Поиск слова", callback_data="search_word")],
         [InlineKeyboardButton("📚 Популярные глаголы", callback_data="popular_verbs")],
         [InlineKeyboardButton("💬 Разговорные фразы", callback_data="common_phrases")],
-        [InlineKeyboardButton("🎯 Случайное слово", callback_data="random_word")],
         [InlineKeyboardButton("📖 Грамматика", callback_data="grammar")],
+        [InlineKeyboardButton("🎯 Случайное слово", callback_data="random_word")],
         [InlineKeyboardButton("ℹ️ Помощь", callback_data="help")],
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -176,6 +151,7 @@ def get_verbs_keyboard():
         [InlineKeyboardButton("do", callback_data="verb_do"), InlineKeyboardButton("go", callback_data="verb_go")],
         [InlineKeyboardButton("see", callback_data="verb_see"), InlineKeyboardButton("say", callback_data="verb_say")],
         [InlineKeyboardButton("get", callback_data="verb_get"), InlineKeyboardButton("make", callback_data="verb_make")],
+        [InlineKeyboardButton("📚 Все глаголы", callback_data="all_verbs")],
         [InlineKeyboardButton("◀️ Назад", callback_data="back_to_main")],
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -192,10 +168,10 @@ def get_phrases_keyboard():
 
 def get_grammar_keyboard():
     keyboard = [
-        [InlineKeyboardButton("📝 Present Simple", callback_data="grammar_present_simple")],
-        [InlineKeyboardButton("⏳ Present Continuous", callback_data="grammar_present_continuous")],
-        [InlineKeyboardButton("🕰️ Past Simple", callback_data="grammar_past_simple")],
-        [InlineKeyboardButton("🔮 Future Simple", callback_data="grammar_future_simple")],
+        [InlineKeyboardButton("📝 Present Simple", callback_data="grammar_present")],
+        [InlineKeyboardButton("⏳ Past Simple", callback_data="grammar_past")],
+        [InlineKeyboardButton("🔮 Future Simple", callback_data="grammar_future")],
+        [InlineKeyboardButton("🔄 Времена сравнение", callback_data="grammar_comparison")],
         [InlineKeyboardButton("◀️ Назад", callback_data="back_to_main")],
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -205,14 +181,16 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = """
 🇬🇧 *English Learning Bot* 🇺🇸
 
-*Умный помощник для изучения английского!*
+*Ваш умный помощник для изучения английского!*
 
-✨ *Возможности:*
-• 🔤 Поиск слов с транскрипцией и переводом
-• 📚 Популярные глаголы с формами
+✨ *Что умеет бот:*
+• 🔤 Поиск слов с транскрипцией
+• 📚 Глаголы с формами и примерами  
 • 💬 Полезные разговорные фразы
 • 📖 Объяснения грамматики
 • 🎯 Интерактивные упражнения
+
+🎯 *Уровень:* Начальный (A1-A2)
 
 *Выберите действие:*
     """
@@ -229,19 +207,19 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 *Основные команды:*
 /start - Главное меню
-/help - Эта справка  
+/help - Эта справка
 /word <слово> - Найти слово
-/verb <глагол> - Информация о глаголе
+/verb <глагол> - Найти глагол
 /random - Случайное слово
 
 *Интерактивное меню:*
 • Используйте кнопки для навигации
-• Нажимайте на слова для подробной информации
+• Нажимайте на слова для подробностей
 • Практикуйтесь ежедневно!
 
 💡 *Советы для изучения:*
 1. Учите по 5-10 слов в день
-2. Составляйте предложения
+2. Составляйте свои предложения
 3. Повторяйте пройденное
 4. Практикуйте произношение
 
@@ -283,7 +261,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await help_handler(query)
     
     elif callback_data.startswith("verb_"):
-        await verb_detail_handler(query, callback_data.replace("verb_", ""))
+        verb = callback_data.replace("verb_", "")
+        await word_detail_handler(query, verb)
+    
+    elif callback_data == "all_verbs":
+        await all_verbs_handler(query)
     
     elif callback_data.startswith("phrases_"):
         await phrases_handler(query, callback_data.replace("phrases_", ""))
@@ -306,13 +288,13 @@ async def search_word_handler(query):
 Введите слово на английском, и я найду:
 • 📝 Транскрипцию (произношение)
 • 🇷🇺 Перевод на русский
-• 📚 Примеры использования
+• 💡 Примеры использования
 
 *Используйте команды:*
 `/word hello` - найти слово
 `/verb go` - найти глагол
 
-*Или выберите популярные глаголы:*
+*Или выберите из популярных:*
     """
     await query.edit_message_text(
         text=text,
@@ -327,17 +309,54 @@ async def popular_verbs_handler(query):
 Выберите глагол для подробной информации:
 
 *Топ-10 самых используемых глаголов:*
-"""
-    verbs = ["be", "have", "do", "say", "get", "make", "go", "know", "take", "see"]
-    for i, verb in enumerate(verbs, 1):
-        text += f"{i}. *{verb}* - базовый глагол\n"
-    
-    text += "\n💡 *Совет:* Эти глаголы покрывают 50% всей английской речи!"
-    
+1. *be* - быть
+2. *have* - иметь  
+3. *do* - делать
+4. *say* - говорить
+5. *get* - получать
+6. *make* - делать
+7. *go* - идти
+8. *know* - знать
+9. *take* - брать
+10. *see* - видеть
+
+💡 *Совет:* Эти глаголы покрывают 50% всей английской речи!
+    """
     await query.edit_message_text(
         text=text,
         parse_mode='Markdown',
         reply_markup=get_verbs_keyboard()
+    )
+
+async def all_verbs_handler(query):
+    verbs = dictionary.verbs_db
+    text = "📚 *Все глаголы в базе:*\n\n"
+    
+    for i, (verb, info) in enumerate(verbs.items(), 1):
+        text += f"{i}. *{verb}* - {info['translation']}\n"
+        text += f"   Формы: {info['past']} - {info['participle']}\n\n"
+    
+    text += "💡 Нажмите на глагол для подробной информации"
+    
+    # Создаем кнопки для всех глаголов
+    keyboard = []
+    verbs_list = list(verbs.keys())
+    
+    # Группируем по 2 глагола в строке
+    for i in range(0, len(verbs_list), 2):
+        row = []
+        if i < len(verbs_list):
+            row.append(InlineKeyboardButton(verbs_list[i], callback_data=f"verb_{verbs_list[i]}"))
+        if i + 1 < len(verbs_list):
+            row.append(InlineKeyboardButton(verbs_list[i + 1], callback_data=f"verb_{verbs_list[i + 1]}"))
+        keyboard.append(row)
+    
+    keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data="popular_verbs")])
+    
+    await query.edit_message_text(
+        text=text,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 async def common_phrases_handler(query):
@@ -345,7 +364,15 @@ async def common_phrases_handler(query):
 💬 *Разговорные фразы*
 
 Выберите категорию полезных фраз для повседневного общения:
-"""
+
+*Доступные категории:*
+• 👋 Приветствия и прощания
+• 🤝 Знакомство
+• ☕ В кафе и ресторане  
+• ❓ Основные вопросы
+
+💡 *Практикуйте фразы вслух!*
+    """
     await query.edit_message_text(
         text=text,
         parse_mode='Markdown',
@@ -353,31 +380,32 @@ async def common_phrases_handler(query):
     )
 
 async def random_word_handler(query):
-    words = [
-        {"word": "hello", "translation": "привет", "example": "Hello! How are you?"},
-        {"word": "beautiful", "translation": "красивый", "example": "What a beautiful day!"},
-        {"word": "important", "translation": "важный", "example": "This is very important."},
-        {"word": "understand", "translation": "понимать", "example": "I understand you."},
-        {"word": "different", "translation": "разный", "example": "We are different."},
-    ]
+    # Объединяем слова и глаголы
+    all_words = {**dictionary.words_db, **dictionary.verbs_db}
+    word = random.choice(list(all_words.keys()))
     
-    word = random.choice(words)
+    word_info = all_words[word]
     
     text = f"""
 🎯 *Случайное слово для изучения!*
 
-📖 *Слово:* {word['word']}
-🇷🇺 *Перевод:* {word['translation']}
-💡 *Пример:* {word['example']}
+📖 *Слово:* {word}
+📝 *Транскрипция:* {word_info['phonetic']}
+🇷🇺 *Перевод:* {word_info['translation']}
 
-*Практика:* Составьте своё предложение с этим словом!
-
-🔄 *Обновить слово:* /random
-    """
+"""
+    
+    if 'past' in word_info:
+        text += f"📊 *Формы глагола:*\n"
+        text += f"• Past Simple: {word_info['past']}\n"
+        text += f"• Past Participle: {word_info['participle']}\n\n"
+    
+    text += f"💡 *Пример:* {word_info['examples'][0]}\n\n"
+    text += "*Практика:* Составьте своё предложение с этим словом!"
     
     keyboard = [
         [InlineKeyboardButton("🔄 Новое слово", callback_data="random_word")],
-        [InlineKeyboardButton("🔍 Найти слово", callback_data="search_word")],
+        [InlineKeyboardButton("🔍 Подробнее", callback_data=f"verb_{word}" if word in dictionary.verbs_db else f"word_{word}")],
         [InlineKeyboardButton("◀️ В меню", callback_data="back_to_main")],
     ]
     
@@ -391,21 +419,20 @@ async def grammar_handler(query):
     text = """
 📖 *Грамматика английского языка*
 
-Выберите время для изучения:
+Выберите раздел для изучения:
 
-*Доступные разделы:*
-• 📝 Present Simple - регулярные действия
-• ⏳ Present Continuous - действия сейчас  
-• 🕰️ Past Simple - завершенные действия
-• 🔮 Future Simple - будущие действия
+*Доступные темы:*
+• 📝 Present Simple - настоящее время
+• ⏳ Past Simple - прошедшее время  
+• 🔮 Future Simple - будущее время
+• 🔄 Сравнение времен
 
-💡 *Каждое время включает:*
+💡 *Каждая тема включает:*
 - Правила образования
 - Примеры предложений
 - Слова-маркеры
-- Упражнения
+- Упражнения для практики
     """
-    
     await query.edit_message_text(
         text=text,
         parse_mode='Markdown',
@@ -426,7 +453,7 @@ async def help_handler(query):
 /start - главное меню
 /help - помощь
 /word <слово> - найти слово
-/verb <глагол> - найти глагол  
+/verb <глагол> - найти глагол
 /random - случайное слово
 
 💡 *Для лучшего результата:*
@@ -437,7 +464,6 @@ async def help_handler(query):
 
 *Удачи в изучении!* 🌟
     """
-    
     keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="back_to_main")]]
     await query.edit_message_text(
         text=text,
@@ -445,60 +471,56 @@ async def help_handler(query):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-async def verb_detail_handler(query, verb):
+async def word_detail_handler(query, word):
     # Показываем загрузку
     await query.edit_message_text(
-        text=f"🔍 Ищу информацию о глаголе *{verb}*...",
+        text=f"🔍 Ищу информацию о слове *{word}*...",
         parse_mode='Markdown'
     )
     
-    # Получаем информацию о глаголе
-    verb_info = await english_api.get_verb_info(verb)
+    # Получаем информацию о слове
+    word_info = await dictionary.get_word_info(word)
     
-    if verb_info:
+    if word_info:
         text = f"""
-🔤 *Глагол: {verb_info['word']}*
+🔤 *Слово:* {word_info['word']}
 
-📝 *Транскрипция:* {verb_info.get('phonetic', '/транскрипция/')}
-🇷🇺 *Перевод:* {verb_info['meanings'][0]['translation'] if verb_info['meanings'] else 'перевод'}
-
+📝 *Транскрипция:* {word_info.get('phonetic', '/транскрипция/')}
+🇷🇺 *Перевод:* {word_info.get('translation', 'перевод')}
 """
         
         # Добавляем формы для глаголов
-        if 'past' in verb_info and 'participle' in verb_info:
-            text += f"📊 *Формы:*\n"
-            text += f"• Past Simple: {verb_info['past']}\n"
-            text += f"• Past Participle: {verb_info['participle']}\n\n"
+        if word_info.get('type') == 'verb' and 'past' in word_info:
+            text += f"\n📊 *Формы глагола:*\n"
+            text += f"• Past Simple: {word_info['past']}\n"
+            text += f"• Past Participle: {word_info['participle']}\n"
         
         # Добавляем примеры
-        text += f"💡 *Примеры:*\n"
-        text += f"• I {verb} every day\n"
-        text += f"• She {verb}s to school\n"
-        text += f"• They {verb_info.get('past', verb+'ed')} yesterday\n\n"
+        text += f"\n💡 *Примеры использования:*\n"
+        for example in word_info.get('examples', []):
+            text += f"• {example}\n"
         
-        text += f"📚 *Источник:* {verb_info.get('source', 'База данных')}\n\n"
-        text += "🎯 *Практика:* Составьте 3 предложения с этим глаголом!"
+        text += f"\n📚 *Источник:* {word_info.get('source', 'База данных')}\n\n"
+        text += "🎯 *Практика:* Составьте 2-3 предложения с этим словом!"
     
     else:
         text = f"""
-🔤 *Глагол: {verb}*
+🔤 *Слово:* {word}
 
-⚠️ *Информация временно недоступна*
+⚠️ *Информация не найдена*
 
-*Базовые формы:*
-• Infinitive: {verb}
-• Past Simple: {verb}ed
-• Past Participle: {verb}ed
+💡 *Попробуйте:*
+• Проверить написание слова
+• Использовать базовую форму (для глаголов)
+• Воспользоваться другим словом
 
-💡 *Пример использования:*
-I {verb} to learn English - Я {verb} учить английский
-
-*Попробуйте другой глагол или используйте команду:* `/verb {verb}`
+*Пример использования:* I {word} every day.
         """
     
     keyboard = [
-        [InlineKeyboardButton("🔍 Другой глагол", callback_data="popular_verbs")],
+        [InlineKeyboardButton("🔍 Другое слово", callback_data="search_word")],
         [InlineKeyboardButton("🎯 Случайное слово", callback_data="random_word")],
+        [InlineKeyboardButton("📚 Все глаголы", callback_data="all_verbs")],
         [InlineKeyboardButton("◀️ В меню", callback_data="back_to_main")],
     ]
     
@@ -517,6 +539,7 @@ async def phrases_handler(query, category):
             {"english": "Good evening!", "russian": "Добрый вечер!", "context": "После 18:00"},
             {"english": "How are you?", "russian": "Как дела?", "context": "Стандартный вопрос"},
             {"english": "I'm fine, thanks!", "russian": "Хорошо, спасибо!", "context": "Позитивный ответ"},
+            {"english": "What's up?", "russian": "Как дела? (неформ.)", "context": "Неформальный вопрос"},
         ],
         "introduction": [
             {"english": "What's your name?", "russian": "Как тебя зовут?", "context": "Спросить имя"},
@@ -524,12 +547,15 @@ async def phrases_handler(query, category):
             {"english": "Where are you from?", "russian": "Откуда ты?", "context": "Спросить откуда"},
             {"english": "I'm from Russia", "russian": "Я из России", "context": "Ответить откуда"},
             {"english": "Nice to meet you!", "russian": "Приятно познакомиться!", "context": "После знакомства"},
+            {"english": "How old are you?", "russian": "Сколько тебе лет?", "context": "Спросить возраст"},
         ],
         "cafe": [
             {"english": "Can I have a coffee?", "russian": "Можно мне кофе?", "context": "Заказ напитка"},
             {"english": "I would like tea", "russian": "Я бы хотел(а) чай", "context": "Вежливый заказ"},
+            {"english": "What do you recommend?", "russian": "Что вы посоветуете?", "context": "Спросить рекомендацию"},
             {"english": "How much is it?", "russian": "Сколько это стоит?", "context": "Узнать цену"},
             {"english": "The bill, please", "russian": "Счет, пожалуйста", "context": "Попросить счет"},
+            {"english": "It's delicious!", "russian": "Это очень вкусно!", "context": "Похвалить еду"},
         ],
         "questions": [
             {"english": "What is this?", "russian": "Что это?", "context": "Спросить о предмете"},
@@ -537,14 +563,15 @@ async def phrases_handler(query, category):
             {"english": "When...?", "russian": "Когда...?", "context": "Спросить о времени"},
             {"english": "Why...?", "russian": "Почему...?", "context": "Спросить причину"},
             {"english": "How...?", "russian": "Как...?", "context": "Спросить способ"},
+            {"english": "Can you help me?", "russian": "Можете помочь мне?", "context": "Попросить помощи"},
         ]
     }
     
     category_names = {
-        "greetings": "👋 Приветствия",
+        "greetings": "👋 Приветствия и прощания",
         "introduction": "🤝 Знакомство", 
-        "cafe": "☕ В кафе",
-        "questions": "❓ Вопросы"
+        "cafe": "☕ В кафе и ресторане",
+        "questions": "❓ Основные вопросы"
     }
     
     phrases = phrases_db.get(category, [])
@@ -565,81 +592,109 @@ async def phrases_handler(query, category):
         reply_markup=get_phrases_keyboard()
     )
 
-async def grammar_detail_handler(query, tense):
+async def grammar_detail_handler(query, topic):
     grammar_db = {
-        "present_simple": {
-            "name": "Present Simple",
-            "usage": "Регулярные действия, привычки, факты, расписания",
-            "structure": "Subject + V1/V1+s (he/she/it)",
-            "examples": [
-                "I work every day - Я работаю каждый день",
-                "He works in an office - Он работает в офисе",
-                "We like music - Нам нравится музыка",
-                "The sun rises in the east - Солнце встает на востоке"
-            ],
-            "signal_words": ["always", "usually", "often", "every day", "sometimes", "never"]
+        "present": {
+            "title": "📝 Present Simple",
+            "content": """
+*Present Simple* (Настоящее Простое)
+
+🎯 *Использование:*
+• Регулярные действия и привычки
+• Факты и общие истины
+• Расписания и программы
+
+🏗️ *Формула:*
+• I/you/we/they + V1
+• he/she/it + V1 + s
+
+📝 *Примеры:*
+• I work every day - Я работаю каждый день
+• He works in an office - Он работает в офисе
+• The sun rises in the east - Солнце встает на востоке
+
+🔍 *Слова-маркеры:*
+always, usually, often, every day, sometimes, never
+            """
         },
-        "present_continuous": {
-            "name": "Present Continuous", 
-            "usage": "Действия в момент речи, временные ситуации, планы на ближайшее будущее",
-            "structure": "Subject + am/is/are + V-ing",
-            "examples": [
-                "I am reading now - Я сейчас читаю",
-                "She is watching TV - Она смотрит телевизор", 
-                "They are playing football - Они играют в футбол",
-                "We are meeting tomorrow - Мы встречаемся завтра"
-            ],
-            "signal_words": ["now", "at the moment", "currently", "today", "right now"]
+        "past": {
+            "title": "⏳ Past Simple", 
+            "content": """
+*Past Simple* (Прошедшее Простое)
+
+🎯 *Использование:*
+• Завершенные действия в прошлом
+• Последовательные события
+• Факты из прошлого
+
+🏗️ *Формула:*
+• Subject + V2 (правильные: V+ed)
+
+📝 *Примеры:*
+• I worked yesterday - Я работал вчера
+• She went to school - Она ходила в школу
+• We saw a movie - Мы смотрели фильм
+
+🔍 *Слова-маркеры:*
+yesterday, last week, ago, in 2020, then
+            """
         },
-        "past_simple": {
-            "name": "Past Simple",
-            "usage": "Завершенные действия в прошлом, последовательные события", 
-            "structure": "Subject + V2 (правильные: V+ed)",
-            "examples": [
-                "I worked yesterday - Я работал вчера",
-                "She went to school - Она ходила в школу",
-                "We saw a movie - Мы смотрели фильм", 
-                "He lived in London - Он жил в Лондоне"
-            ],
-            "signal_words": ["yesterday", "last week", "ago", "in 2020", "then"]
+        "future": {
+            "title": "🔮 Future Simple",
+            "content": """
+*Future Simple* (Будущее Простое)
+
+🎯 *Использование:*
+• Спонтанные решения
+• Предсказания и обещания
+• Будущие факты
+
+🏗️ *Формула:*
+• Subject + will + V1
+
+📝 *Примеры:*
+• I will help you - Я помогу тебе
+• It will rain tomorrow - Завтра будет дождь
+• She will be 25 - Ей будет 25 лет
+
+🔍 *Слова-маркеры:*
+tomorrow, next week, soon, in the future
+            """
         },
-        "future_simple": {
-            "name": "Future Simple",
-            "usage": "Спонтанные решения, предсказания, обещания, будущие факты",
-            "structure": "Subject + will + V1", 
-            "examples": [
-                "I will help you - Я помогу тебе",
-                "It will rain tomorrow - Завтра будет дождь",
-                "We will travel next year - Мы будем путешествовать в следующем году",
-                "She will be 25 next month - Ей будет 25 в следующем месяце"
-            ],
-            "signal_words": ["tomorrow", "next week", "soon", "in the future", "later"]
+        "comparison": {
+            "title": "🔄 Сравнение времен",
+            "content": """
+*Сравнение основных времен:*
+
+🟢 *Present Simple*
+I work every day - Постоянное действие
+
+🔵 *Past Simple*  
+I worked yesterday - Завершенное действие в прошлом
+
+🟣 *Future Simple*
+I will work tomorrow - Действие в будущем
+
+💡 *Упражнение:*
+Переведите на английский:
+1. Я читаю книгу каждый день
+2. Вчера я смотрел фильм
+3. Завтра я пойду в парк
+
+*Ответы:*
+1. I read a book every day
+2. Yesterday I watched a movie  
+3. Tomorrow I will go to the park
+            """
         }
     }
     
-    tense_info = grammar_db.get(tence, {})
+    topic_info = grammar_db.get(topic, {})
     
-    if tense_info:
-        text = f"""
-📖 *{tense_info['name']}*
-
-🎯 *Использование:* {tense_info['usage']}
-
-🏗️ *Формула:* `{tense_info['structure']}`
-
-📝 *Примеры:*
-"""
-        for example in tense_info['examples']:
-            text += f"• {example}\n"
-        
-        text += f"\n🔍 *Слова-маркеры:* {', '.join(tense_info['signal_words'])}"
-        
-        text += f"""
-
-💡 *Упражнение:* Составьте 2 предложения в {tense_info['name']}!
-        """
+    if topic_info:
+        text = topic_info['content']
     else:
-        text = "Информация о данном времени временно недоступна."
+        text = "Информация по данной теме временно недоступна."
     
     await query.edit_message_text(
         text=text,
@@ -652,73 +707,68 @@ async def word_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text(
             "Введите слово после команды: `/word hello`",
-            parse_mode='Markdown'
+            parse_mode='Markdown',
+            reply_markup=get_main_menu_keyboard()
         )
         return
     
     word = context.args[0].lower()
-    await search_and_send_word_info(update, word, "word")
+    await send_word_info(update, word)
 
 async def verb_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text(
             "Введите глагол после команды: `/verb go`",
-            parse_mode='Markdown'
+            parse_mode='Markdown',
+            reply_markup=get_main_menu_keyboard()
         )
         return
     
     verb = context.args[0].lower()
-    await search_and_send_word_info(update, verb, "verb")
+    await send_word_info(update, verb)
 
 async def random_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await random_word_handler(update)
 
-async def search_and_send_word_info(update, word, word_type):
+async def send_word_info(update, word):
     # Показываем что ищем
-    if update.message:
-        message = await update.message.reply_text(f"🔍 Ищу информацию о {'глаголе' if word_type == 'verb' else 'слове'} *{word}*...", parse_mode='Markdown')
-    else:
-        message = await update.callback_query.message.reply_text(f"🔍 Ищу информацию о {'глаголе' if word_type == 'verb' else 'слове'} *{word}*...", parse_mode='Markdown')
+    message = await update.message.reply_text(f"🔍 Ищу информацию о слове *{word}*...", parse_mode='Markdown')
     
     # Получаем информацию
-    word_info = await english_api.get_verb_info(word)
+    word_info = await dictionary.get_word_info(word)
     
     if word_info:
         text = f"""
 🔍 *Результат поиска:*
 
-📖 *{'Глагол' if word_type == 'verb' else 'Слово'}:* {word_info['word']}
+📖 *Слово:* {word_info['word']}
 📝 *Транскрипция:* {word_info.get('phonetic', '/транскрипция/')}
-🇷🇺 *Перевод:* {word_info['meanings'][0]['translation'] if word_info['meanings'] else 'перевод'}
+🇷🇺 *Перевод:* {word_info.get('translation', 'перевод')}
 """
         
-        if word_type == 'verb' and 'past' in word_info:
+        if word_info.get('type') == 'verb' and 'past' in word_info:
             text += f"📊 *Формы глагола:*\n"
             text += f"• Past Simple: {word_info['past']}\n"
             text += f"• Past Participle: {word_info['participle']}\n\n"
         
-        text += f"💡 *Пример:* I {word} every day.\n\n"
+        text += f"💡 *Пример:* {word_info.get('examples', [''])[0]}\n\n"
         text += f"📚 *Источник:* {word_info.get('source', 'База данных')}"
     
     else:
         text = f"""
-🔍 *{'Глагол' if word_type == 'verb' else 'Слово'}:* {word}
+🔍 *Слово:* {word}
 
-⚠️ *Подробная информация не найдена*
+⚠️ *Информация не найдена*
 
-*Базовая информация:*
-• Используйте в предложениях
-• Практикуйте произношение
-• Составляйте свои примеры
+💡 *Попробуйте:*
+• Проверить написание
+• Использовать другое слово
+• Обратиться к меню глаголов
 
-💡 *Пример:* I like to {word} - Мне нравится {word}
+*Пример использования:* I {word} every day.
         """
     
-    # Обновляем сообщение или отправляем новое
-    if update.message:
-        await message.edit_text(text, parse_mode='Markdown', reply_markup=get_main_menu_keyboard())
-    else:
-        await message.edit_text(text, parse_mode='Markdown', reply_markup=get_main_menu_keyboard())
+    await message.edit_text(text, parse_mode='Markdown', reply_markup=get_main_menu_keyboard())
 
 # --- ОСНОВНАЯ ФУНКЦИЯ ---
 def main():
@@ -740,24 +790,18 @@ def main():
     
     # Запуск
     if os.getenv('RAILWAY_ENVIRONMENT'):
-        # На Railway используем вебхук
+        # На Railway
         PORT = int(os.getenv('PORT', 8443))
-        WEBHOOK_URL = os.getenv('RAILWAY_STATIC_URL')
-        
-        if WEBHOOK_URL:
-            application.run_webhook(
-                listen="0.0.0.0",
-                port=PORT,
-                url_path=BOT_TOKEN,
-                webhook_url=f"{WEBHOOK_URL}/{BOT_TOKEN}"
-            )
-        else:
-            # Если нет вебхука, используем поллинг
-            logger.info("Запуск в режиме поллинга на Railway...")
-            application.run_polling()
+        logger.info(f"Starting bot on Railway, port: {PORT}")
+        application.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            url_path=BOT_TOKEN,
+            webhook_url=f"https://{os.getenv('RAILWAY_STATIC_URL', '')}/{BOT_TOKEN}"
+        )
     else:
-        # Локально используем поллинг
-        logger.info("Запуск в режиме поллинга локально...")
+        # Локально
+        logger.info("Starting bot in polling mode locally...")
         application.run_polling()
 
 if __name__ == '__main__':
