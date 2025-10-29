@@ -3,40 +3,271 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Чат-бот</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>DeepSeek Чат-бот</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 800px;
+            height: 90vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.bot {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.bot .message-bubble {
+            background: white;
+            color: #333;
+            border: 1px solid #e1e5e9;
+        }
+
+        .quick-replies {
+            padding: 15px;
+            border-top: 1px solid #e1e5e9;
+            background: white;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .quick-btn {
+            background: #f1f3f4;
+            border: 1px solid #dadce0;
+            border-radius: 18px;
+            padding: 8px 16px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-btn:hover {
+            background: #e8f0fe;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            border-top: 1px solid #e1e5e9;
+            background: white;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #dadce0;
+            border-radius: 24px;
+            font-size: 1em;
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .typing {
+            display: none;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 18px;
+            border: 1px solid #e1e5e9;
+            margin-bottom: 15px;
+        }
+    </style>
 </head>
 <body>
     <div class="chat-container">
         <div class="chat-header">
-            <h1>🤖 AI Помощник</h1>
-            <p>Готов помочь с любыми вопросами</p>
+            <h1>🤖 DeepSeek Чат-бот</h1>
+            <p>На основе AI от DeepSeek</p>
         </div>
         
         <div class="chat-messages" id="chatMessages">
-            <div class="typing-indicator" id="typingIndicator">
-                <div class="typing-dots">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
+            <div class="message bot">
+                <div class="message-bubble">
+                    Привет! Я AI-ассистент на основе DeepSeek. Чем могу помочь?
                 </div>
             </div>
         </div>
         
         <div class="quick-replies" id="quickReplies">
-            <!-- Быстрые ответы будут добавляться здесь -->
+            <!-- Кнопки появятся здесь -->
         </div>
         
         <div class="chat-input-container">
-            <input type="text" class="chat-input" id="chatInput" placeholder="Введите ваше сообщение...">
-            <button class="send-btn" id="sendButton">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="currentColor"/>
-                </svg>
+            <input type="text" class="chat-input" id="chatInput" placeholder="Введите сообщение...">
+            <button class="send-btn" onclick="sendMessage()">
+                ➤
             </button>
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const quickReplies = document.getElementById('quickReplies');
+
+        // Загружаем быстрые кнопки
+        updateQuickReplies(['Привет! 👋', 'Что ты умеешь?', 'Помоги с кодом', 'Спасибо!']);
+
+        // Отправка сообщения по Enter
+        chatInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Фокус на поле ввода
+        chatInput.focus();
+
+        async function sendMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            // Добавляем сообщение пользователя
+            addMessage(message, 'user');
+            chatInput.value = '';
+            
+            // Показываем индикатор загрузки
+            showTyping();
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                const data = await response.json();
+                
+                // Скрываем индикатор
+                hideTyping();
+
+                if (response.ok) {
+                    addMessage(data.response, 'bot');
+                    updateQuickReplies(data.quick_replies);
+                } else {
+                    addMessage('Ошибка: ' + (data.error || 'Неизвестная ошибка'), 'bot');
+                }
+            } catch (error) {
+                hideTyping();
+                addMessage('Ошибка сети. Проверьте соединение.', 'bot');
+            }
+        }
+
+        function sendQuickMessage(message) {
+            chatInput.value = message;
+            sendMessage();
+        }
+
+        function addMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'message-bubble';
+            bubbleDiv.textContent = text;
+            
+            messageDiv.appendChild(bubbleDiv);
+            chatMessages.appendChild(messageDiv);
+            
+            // Прокрутка вниз
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function updateQuickReplies(replies) {
+            quickReplies.innerHTML = '';
+            replies.forEach(reply => {
+                const button = document.createElement('button');
+                button.className = 'quick-btn';
+                button.textContent = reply;
+                button.onclick = () => sendQuickMessage(reply);
+                quickReplies.appendChild(button);
+            });
+        }
+
+        function showTyping() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'typing';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.textContent = 'DeepSeek печатает...';
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideTyping() {
+            const typingIndicator = document.getElementById('typingIndicator');
+            if (typingIndicator) {
+                typingIndicator.remove();
+            }
+        }
+    </script>
 </body>
 </html>
