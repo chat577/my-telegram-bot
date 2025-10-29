@@ -1,7 +1,6 @@
 import os
 import logging
-from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+import telebot
 
 # Настройка логирования
 logging.basicConfig(
@@ -10,88 +9,74 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Получаем токен из переменных окружения
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
+# Получаем токен
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
 
 if not BOT_TOKEN:
-    logger.error("❌ BOT_TOKEN не установлен в переменных окружения")
+    logger.error("❌ BOT_TOKEN не найден!")
     exit(1)
 
-# Команда /start
-def start(update: Update, context: CallbackContext):
-    user = update.message.from_user
-    logger.info(f"👤 Пользователь {user.first_name} запустил бота")
-    
-    update.message.reply_text(
-        f"Привет, {user.first_name}! 👋\n"
-        "Я простой чат-бот. Просто напиши мне что-нибудь!\n"
-        "Используй /help для списка команд."
-    )
+# Создаем бота
+bot = telebot.TeleBot(BOT_TOKEN)
 
-# Команда /help
-def help_command(update: Update, context: CallbackContext):
-    help_text = """
+# Обработчик команды /start
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    try:
+        logger.info(f"👤 Пользователь {message.from_user.first_name} запустил бота")
+        bot.reply_to(
+            message,
+            f"Привет, {message.from_user.first_name}! 👋\n"
+            "Я работаю! Рад тебя видеть!"
+        )
+    except Exception as e:
+        logger.error(f"❌ Ошибка в /start: {e}")
+
+# Обработчик команды /help
+@bot.message_handler(commands=['help'])
+def send_help(message):
+    try:
+        help_text = """
 🤖 Доступные команды:
 /start - Начать общение
-/help - Показать эту справку
+/help - Показать справку
 
-Просто напиши мне сообщение, и я отвечу!
-    """
-    update.message.reply_text(help_text)
-    logger.info("📋 Отправлена справка")
+Просто напиши мне что-нибудь!
+        """
+        bot.reply_to(message, help_text)
+        logger.info("📋 Отправлена справка")
+    except Exception as e:
+        logger.error(f"❌ Ошибка в /help: {e}")
 
-# Обработка текстовых сообщений
-def handle_message(update: Update, context: CallbackContext):
-    user_message = update.message.text
-    user = update.message.from_user
-    
-    logger.info(f"💬 Получено сообщение от {user.first_name}: {user_message}")
-    
-    user_message_lower = user_message.lower()
-    
-    if 'привет' in user_message_lower:
-        response = f"Привет, {user.first_name}! Рад тебя видеть! 😊"
-    elif 'как дела' in user_message_lower:
-        response = "У меня всё отлично! Спасибо, что спросил! 👍"
-    elif 'пока' in user_message_lower:
-        response = "До свидания! Возвращайся скорее! 👋"
-    elif 'спасибо' in user_message_lower:
-        response = "Пожалуйста! Всегда рад помочь! 😄"
-    else:
-        response = f"Ты написал: '{user_message}'\n\nЯ простой бот, но я тебя услышал! 😊"
-    
-    update.message.reply_text(response)
-    logger.info(f"📤 Отправлен ответ: {response}")
-
-# Обработка ошибок
-def error_handler(update: Update, context: CallbackContext):
-    logger.error(f"❌ Ошибка: {context.error}")
-
-def main():
+# Обработчик всех текстовых сообщений
+@bot.message_handler(func=lambda message: True)
+def echo_all(message):
     try:
-        logger.info("🚀 Запуск бота...")
+        user_text = message.text
+        user = message.from_user
         
-        # Создаем updater
-        updater = Updater(BOT_TOKEN, use_context=True)
+        logger.info(f"💬 Сообщение от {user.first_name}: {user_text}")
         
-        # Получаем dispatcher
-        dp = updater.dispatcher
+        # Простые ответы
+        if 'привет' in user_text.lower():
+            response = f"Привет, {user.first_name}! 😊"
+        elif 'как дела' in user_text.lower():
+            response = "Отлично! Спасибо! 👍"
+        elif 'пока' in user_text.lower():
+            response = "До свидания! 👋"
+        else:
+            response = f"Ты сказал: {user_text}\nЯ простой бот! 🤖"
         
-        # Добавляем обработчики
-        dp.add_handler(CommandHandler("start", start))
-        dp.add_handler(CommandHandler("help", help_command))
-        dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
-        
-        # Обработчик ошибок
-        dp.add_error_handler(error_handler)
-        
-        # Запускаем бота
-        logger.info("✅ Бот запущен и ожидает сообщения...")
-        updater.start_polling()
-        updater.idle()
+        bot.reply_to(message, response)
+        logger.info(f"📤 Ответ отправлен: {response}")
         
     except Exception as e:
-        logger.error(f"💥 Критическая ошибка при запуске бота: {e}")
+        logger.error(f"❌ Ошибка при обработке сообщения: {e}")
 
-if __name__ == "__main__":
-    main()
+# Запуск бота
+if __name__ == '__main__':
+    logger.info("🚀 Бот запускается...")
+    try:
+        bot.infinity_polling()
+    except Exception as e:
+        logger.error(f"💥 Критическая ошибка: {e}")
