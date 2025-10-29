@@ -38,7 +38,21 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Обработка текстовых сообщений
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
-    response = f"Ты написал: {user_message}\n\nЯ простой бот, но я тебя услышал! 😊"
+    
+    # Простые ответы на основе ключевых слов
+    user_message_lower = user_message.lower()
+    
+    if 'привет' in user_message_lower:
+        response = f"Привет, {update.message.from_user.first_name}! Рад тебя видеть! 😊"
+    elif 'как дела' in user_message_lower:
+        response = "У меня всё отлично! Спасибо, что спросил! 👍"
+    elif 'пока' in user_message_lower or 'до свидания' in user_message_lower:
+        response = "До свидания! Возвращайся скорее! 👋"
+    elif 'спасибо' in user_message_lower:
+        response = "Пожалуйста! Всегда рад помочь! 😄"
+    else:
+        response = f"Ты написал: '{user_message}'\n\nЯ простой бот, но я тебя услышал! 😊"
+    
     await update.message.reply_text(response)
 
 # Обработка ошибок
@@ -46,18 +60,21 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Ошибка: {context.error}")
 
 def main():
-    # Создаем приложение
-    application = Application.builder().token(BOT_TOKEN).build()
-    
-    # Добавляем обработчики
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
-    application.add_error_handler(error_handler)
-    
-    # Запускаем бота
-    logger.info("Бот запущен!")
-    application.run_polling()
+    try:
+        # Создаем приложение
+        application = Application.builder().token(BOT_TOKEN).build()
+        
+        # Добавляем обработчики
+        application.add_handler(CommandHandler("start", start))
+        application.add_handler(CommandHandler("help", help_command))
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+        
+        # Запускаем бота
+        logger.info("Бот запускается...")
+        application.run_polling()
+        
+    except Exception as e:
+        logger.error(f"Ошибка при запуске бота: {e}")
 
 if __name__ == "__main__":
     main()
