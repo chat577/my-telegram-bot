@@ -1,18 +1,21 @@
 import json
 import os
 
-def load_data(filename):
+def load_json_data(filename):
     """Загружает данные из JSON файла"""
     try:
-        filepath = os.path.join(os.path.dirname(__file__), filename)
-        with open(filepath, 'r', encoding='utf-8') as f:
+        # Получаем абсолютный путь к файлу
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(current_dir, filename)
+        
+        with open(file_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
-        print(f"Error loading {filename}: {e}")
+        print(f"Ошибка загрузки {filename}: {e}")
         return {}
 
-# Загружаем все данные
-verbs = load_data('verbs.json')
-words = load_data('words.json')
-phrases = load_data('phrases.json')
-grammar = load_data('grammar.json')
+# Загружаем данные при импорте модуля
+verbs = load_json_data('verbs.json')
+words = load_json_data('words.json') 
+phrases = load_json_data('phrases.json')
+grammar = load_json_data('grammar.json')
